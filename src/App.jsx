@@ -59,12 +59,6 @@ function App() {
       <MarkerClusterGroup chunkedLoading>
         {!isLoading && (
           <>
-            <Marker
-              position={[33.56131362915039, -7.628424167633057]}
-              icon={icon}
-            >
-              <Popup>Я здесь!</Popup>
-            </Marker>
             {data?.innerData?.map((user) => {
               const position = JSON.parse(user?.position);
 
@@ -76,7 +70,20 @@ function App() {
                 >
                   <Popup>
                     <p>{user?.property_type}</p>
+                    <small>district: {user?.district}</small>
+                    <br />
+                    <small>elevator: {user?.elevator ? "yes" : "no"}</small>
+                    <br />
+                    <small>room number: {user?.rooms_number}</small>
+                    <br />
+                    <small>{user?.publish_date}</small>
+                    <br />
                     <small>{user?.title}</small>
+                    <br />
+                    <details>
+                      <summary>description</summary>
+                      <small>{user?.description}</small>
+                    </details>
                   </Popup>
                 </Marker>
               );
