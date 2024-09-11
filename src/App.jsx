@@ -84,6 +84,13 @@ function App() {
                       <summary>description</summary>
                       <small>{user?.description}</small>
                     </details>
+                    <br />
+                    <p>
+                      see {user?.property_type} —{" "}
+                      <a href={user?.url} target="blank">
+                        here
+                      </a>
+                    </p>
                   </Popup>
                 </Marker>
               );
