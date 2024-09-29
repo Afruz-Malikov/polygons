@@ -60,3 +60,22 @@
     display: flex;
     flex-direction: column;
 }
+@media (max-width: 500px) {
+    .filter-result-container {
+        position: fixed;
+        width: 100%;
+        top: calc(100dvh - 60px);
+        right: 0;
+        height: 40dvh;
+        flex-direction: column;
+    }
+
+    .filter-result-container.open {
+        top: 60dvh;
+    }
+
+    .result-box {
+        width: 100%;
+        height: calc(100% - 50px);
+    }
+}

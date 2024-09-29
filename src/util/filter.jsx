@@ -3,6 +3,9 @@ import "./filter.css";
 import PropTypes from "prop-types";
 
 const FilterResult = ({ data, open, setOpen }) => {
+  const removeOtherClickEvents = (e) => {
+    e.stopPropagation();
+  };
   return (
     <div className={`filter-result-container ${open && "open"}`}>
       <span className="action-button" onClick={setOpen}>
@@ -74,7 +77,11 @@ const FilterResult = ({ data, open, setOpen }) => {
           {data?.length > 0 ? (
             data?.map((point, index) => {
               return point ? (
-                <div key={index} className="result-item">
+                <div
+                  key={index}
+                  className="result-item"
+                  onClick={removeOtherClickEvents}
+                >
                   <h4>{point?.property_type}</h4>
                   <p>room number: {point?.rooms_number}</p>
                   <small>{point?.title}</small>
