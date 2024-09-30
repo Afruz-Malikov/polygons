@@ -55,6 +55,23 @@ function App() {
     return <div>Loading map...</div>;
   }
 
+  const isClosed =
+    positions.length > 3 &&
+    positions[0].lat === positions[positions.length - 1].lat &&
+    positions[0].lng === positions[positions.length - 1].lng;
+
+  const updatePosition = (index, newLatLng) => {
+    setPositions((prevPositions) =>
+      prevPositions.map((pos, i) => (i === index ? newLatLng : pos))
+    );
+  };
+
+  const isCloseTo = (point1, point2, threshold = 0.001) => {
+    const latDiff = Math.abs(point1.lat - point2.lat);
+    const lngDiff = Math.abs(point1.lng - point2.lng);
+    return latDiff < threshold && lngDiff < threshold;
+  };
+
   const isPointInPolygon = (point, polygon) => {
     const latlng = L.latLng(point[0], point[1]);
     const bounds = L.latLngBounds(polygon.map((p) => L.latLng(p?.lat, p?.lng)));
@@ -88,8 +105,17 @@ function App() {
     useMapEvents({
       click(e) {
         const newPosition = e.latlng;
-        setPositions((prev) => [...prev, newPosition]);
-        console.log("Clicked coordinates:", e.latlng); // Koordinatları konsola yazdır
+
+        // Çokgen kapandıysa yeni nokta eklenmemeli
+        if (isClosed) return;
+
+        setPositions((prev) => {
+          const firstPosition = prev[0];
+          if (prev.length >= 3 && isCloseTo(newPosition, firstPosition)) {
+            return [...prev, firstPosition];
+          }
+          return [...prev, newPosition];
+        });
       },
     });
     return null;
@@ -118,13 +144,36 @@ function App() {
         />
         {openFilter && (
           <>
-            {" "}
             <MapClickHandler />
             {positions.length > 0 && (
               <Polyline positions={positions} color="blue" />
             )}
             {positions.map((position, index) => (
-              <Marker key={index} position={position} />
+              <Marker
+                key={index}
+                position={position}
+                draggable={isClosed} // Dörtgen tamamlandıysa sürüklenebilir yap
+                eventHandlers={{
+                  dragend: (e) => {
+                    const newLatLng = e.target.getLatLng();
+                    // Eğer çokgen kapalıysa, ilk ve son nokta konumları birbirine eşit olmalı
+                    if (isClosed) {
+                      const updatedPositions = [...positions];
+                      updatedPositions[index] = newLatLng;
+
+                      // İlk noktanın konumunu değiştir
+                      if (index === 0) {
+                        updatedPositions[positions.length - 1] = newLatLng;
+                      } else if (index === positions.length - 1) {
+                        updatedPositions[0] = newLatLng;
+                      }
+                      setPositions(updatedPositions);
+                    } else {
+                      updatePosition(index, newLatLng);
+                    }
+                  },
+                }}
+              />
             ))}
           </>
         )}
