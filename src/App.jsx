@@ -80,7 +80,7 @@ function App() {
 
   const filterPointsInPolygon = (dataPoints) => {
     const polygon = positions;
-    if (positions?.length < 5) {
+    if (positions?.length < 4) {
       return;
     }
     return dataPoints.filter((point) => {
