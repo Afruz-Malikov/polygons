@@ -25,7 +25,10 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openFilter, setOpenFilter] = useState(false);
-  const [positions, setPositions] = useState([]);
+  const [positions, setPositions] = useState([[]]);
+  const [activePolygon, setActivePolygon] = useState(0);
+  console.log("positions", positions);
+
   const { data = [], isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: () => fetchUsers("get/all"),
@@ -55,17 +58,6 @@ function App() {
     return <div>Loading map...</div>;
   }
 
-  const isClosed =
-    positions.length > 3 &&
-    positions[0].lat === positions[positions.length - 1].lat &&
-    positions[0].lng === positions[positions.length - 1].lng;
-
-  const updatePosition = (index, newLatLng) => {
-    setPositions((prevPositions) =>
-      prevPositions.map((pos, i) => (i === index ? newLatLng : pos))
-    );
-  };
-
   const isCloseTo = (point1, point2, threshold = 0.001) => {
     const latDiff = Math.abs(point1.lat - point2.lat);
     const lngDiff = Math.abs(point1.lng - point2.lng);
@@ -74,26 +66,35 @@ function App() {
 
   const isPointInPolygon = (point, polygon) => {
     const latlng = L.latLng(point[0], point[1]);
-    const bounds = L.latLngBounds(polygon.map((p) => L.latLng(p?.lat, p?.lng)));
+    const bounds = L.latLngBounds(polygon.map((p) => L.latLng(p.lat, p.lng)));
     return bounds.contains(latlng);
   };
 
+  const isClosed = () => {
+    const is =
+      positions[0]?.length >= 4 &&
+      positions[0][0].lat === positions[0][positions[0].length - 1].lat &&
+      positions[0][0].lng === positions[0][positions[0].length - 1].lng;
+    return is;
+  };
+
   const filterPointsInPolygon = (dataPoints) => {
-    const polygon = positions;
-    if (positions?.length < 4) {
-      return;
-    }
+    const is = isClosed();
+    if (!is) return [];
+    if (!positions || positions.length < 1) return [];
+
     return dataPoints.filter((point) => {
-      if (!point?.position) {
-        return false;
-      }
+      if (!point?.position) return false;
+
       try {
         const position = JSON.parse(point.position);
-        if (!position || position.length < 2) {
-          console.error("Invalid position data:", position);
-          return false;
-        }
-        return isPointInPolygon(position, polygon);
+        if (!position || position.length < 2) return false;
+        return positions.some((polygon) => {
+          if (!polygon || !Array.isArray(polygon) || polygon.length < 4) {
+            return false;
+          }
+          return isPointInPolygon(position, polygon);
+        });
       } catch (error) {
         console.error("Error parsing position:", error);
         return false;
@@ -105,16 +106,25 @@ function App() {
     useMapEvents({
       click(e) {
         const newPosition = e.latlng;
+        setPositions((prevPositions) => {
+          const updatedPositions = [...prevPositions];
+          const activePositions = updatedPositions[activePolygon];
 
-        // Çokgen kapandıysa yeni nokta eklenmemeli
-        if (isClosed) return;
-
-        setPositions((prev) => {
-          const firstPosition = prev[0];
-          if (prev.length >= 3 && isCloseTo(newPosition, firstPosition)) {
-            return [...prev, firstPosition];
+          if (
+            activePositions?.length >= 3 &&
+            isCloseTo(newPosition, activePositions[0])
+          ) {
+            updatedPositions[activePolygon] = [
+              ...activePositions,
+              activePositions[0],
+            ];
+            setActivePolygon(activePolygon + 1);
+            updatedPositions.push([]);
+            return updatedPositions;
           }
-          return [...prev, newPosition];
+
+          updatedPositions[activePolygon] = [...activePositions, newPosition];
+          return updatedPositions;
         });
       },
     });
@@ -123,7 +133,8 @@ function App() {
 
   const closeFilter = () => {
     setOpenFilter(!openFilter);
-    setPositions([]);
+    setPositions([[]]);
+    setActivePolygon(0);
   };
 
   return (
@@ -145,36 +156,45 @@ function App() {
         {openFilter && (
           <>
             <MapClickHandler />
-            {positions.length > 0 && (
-              <Polyline positions={positions} color="blue" />
-            )}
-            {positions.map((position, index) => (
-              <Marker
-                key={index}
-                position={position}
-                draggable={isClosed} // Dörtgen tamamlandıysa sürüklenebilir yap
-                eventHandlers={{
-                  dragend: (e) => {
-                    const newLatLng = e.target.getLatLng();
-                    // Eğer çokgen kapalıysa, ilk ve son nokta konumları birbirine eşit olmalı
-                    if (isClosed) {
-                      const updatedPositions = [...positions];
-                      updatedPositions[index] = newLatLng;
-
-                      // İlk noktanın konumunu değiştir
-                      if (index === 0) {
-                        updatedPositions[positions.length - 1] = newLatLng;
-                      } else if (index === positions.length - 1) {
-                        updatedPositions[0] = newLatLng;
-                      }
-                      setPositions(updatedPositions);
-                    } else {
-                      updatePosition(index, newLatLng);
-                    }
-                  },
-                }}
+            {positions.map((polygon, polygonIndex) => (
+              <Polyline
+                key={polygonIndex}
+                positions={polygon}
+                color={polygonIndex === activePolygon ? "blue" : "green"}
               />
             ))}
+            {positions?.map((item, polygonIndex) => {
+              return item?.map((position, index) => (
+                <Marker
+                  key={index}
+                  position={position}
+                  draggable={true}
+                  eventHandlers={{
+                    dragend: (e) => {
+                      const newLatLng = e.target.getLatLng();
+                      setPositions((prevPositions) => {
+                        const updatedPositions = [...prevPositions];
+                        const activePositions = [
+                          ...updatedPositions[polygonIndex],
+                        ];
+                        activePositions[index] = newLatLng;
+                        if (index === 0 && activePositions.length > 1) {
+                          activePositions[activePositions.length - 1] =
+                            newLatLng;
+                        } else if (
+                          index === activePositions.length - 1 &&
+                          activePositions.length > 1
+                        ) {
+                          activePositions[0] = newLatLng;
+                        }
+                        updatedPositions[polygonIndex] = activePositions;
+                        return updatedPositions;
+                      });
+                    },
+                  }}
+                />
+              ));
+            })}
           </>
         )}
         <MarkerClusterGroup chunkedLoading>

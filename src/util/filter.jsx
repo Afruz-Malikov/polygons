@@ -72,7 +72,7 @@ const FilterResult = ({ data, open, setOpen }) => {
         )}
       </span>
       <div className="result-box">
-        <h3>Finded location</h3>
+        <h2>Finded location ({data?.length})</h2>
         <div>
           {data?.length > 0 ? (
             data?.map((point, index) => {
@@ -84,7 +84,6 @@ const FilterResult = ({ data, open, setOpen }) => {
                 >
                   <h4>{point?.property_type}</h4>
                   <p>room number: {point?.rooms_number}</p>
-                  <small>{point?.title}</small>
                 </div>
               ) : null;
             })
