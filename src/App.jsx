@@ -27,7 +27,6 @@ function App() {
   const [openFilter, setOpenFilter] = useState(false);
   const [positions, setPositions] = useState([[]]);
   const [activePolygon, setActivePolygon] = useState(0);
-  console.log("positions", positions);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["users"],
@@ -115,7 +114,7 @@ function App() {
             isCloseTo(newPosition, activePositions[0])
           ) {
             updatedPositions[activePolygon] = [
-              ...activePositions,
+              ...(activePositions||[]),
               activePositions[0],
             ];
             setActivePolygon(activePolygon + 1);
@@ -123,7 +122,7 @@ function App() {
             return updatedPositions;
           }
 
-          updatedPositions[activePolygon] = [...activePositions, newPosition];
+          updatedPositions[activePolygon] = [...(activePositions||[]), newPosition];
           return updatedPositions;
         });
       },
@@ -190,6 +189,35 @@ function App() {
                         updatedPositions[polygonIndex] = activePositions;
                         return updatedPositions;
                       });
+                    },
+                    dblclick: () => {
+                      setPositions((prevPositions) => {
+                        const updatedPositions = [...prevPositions];
+                        const activePositions = [
+                          ...updatedPositions[polygonIndex],
+                        ];
+                        activePositions.splice(index, 1);
+                        if (activePositions.length === 0) {
+                          updatedPositions.splice(polygonIndex, 1);
+                        } else {
+                          updatedPositions[polygonIndex] = activePositions;
+                        }
+                        return updatedPositions;
+                      });
+                    },
+                    click: () => {
+                      if (index === 0 && item.length > 3) {
+                        setPositions((prevPositions) => {
+                          const updatedPositions = [...prevPositions];
+                          updatedPositions[polygonIndex] = [
+                            ...updatedPositions[polygonIndex],
+                            updatedPositions[polygonIndex][0],
+                          ];
+                          setActivePolygon(polygonIndex + 1);
+                          updatedPositions.push([]);
+                          return updatedPositions;
+                        });
+                      }
                     },
                   }}
                 />
