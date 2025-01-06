@@ -43,7 +43,7 @@ const handleOk = (e) => {
   e.stopPropagation();
   if (!polygonName) return alert("Please enter a name for the polygon!");
   const oldPositions = JSON.parse(localStorage.getItem("polygons")) || [];
-  const editedIndex = getParams("edit");
+  const editedIndex = JSON.parse(getParams("edit"));
   let newPositions = [...oldPositions];
   if (editedIndex !== null) {
     newPositions[editedIndex] = { name: polygonName, positions };
