@@ -7,6 +7,7 @@ import {
   useMapEvents,
   Polyline,
 } from "react-leaflet";
+import { p_colors } from "./mocks/colors";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import { useQuery } from "@tanstack/react-query";
 import { fetchUsers } from "./service/query.service";
@@ -64,42 +65,51 @@ function App() {
   };
 
   const isPointInPolygon = (point, polygon) => {
-    const latlng = L.latLng(point[0], point[1]);
-    const bounds = L.latLngBounds(polygon.map((p) => L.latLng(p.lat, p.lng)));
-    return bounds.contains(latlng);
+    const x = point[0],
+      y = point[1];
+    let inside = false;
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lat,
+        yi = polygon[i].lng;
+      const xj = polygon[j].lat,
+        yj = polygon[j].lng;
+
+      const intersect =
+        yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
   };
 
-  const isClosed = () => {
-    const is =
-      positions[0]?.length >= 4 &&
-      positions[0][0].lat === positions[0][positions[0].length - 1].lat &&
-      positions[0][0].lng === positions[0][positions[0].length - 1].lng;
-    return is;
-  };
+const isClosed = (polygon) => {
+  if (!polygon || polygon.length < 4) return false;
+  const firstPoint = polygon[0];
+  const lastPoint = polygon[polygon.length - 1];
+  return firstPoint.lat === lastPoint.lat && firstPoint.lng === lastPoint.lng;
+};
 
-  const filterPointsInPolygon = (dataPoints) => {
-    const is = isClosed();
-    if (!is) return [];
-    if (!positions || positions.length < 1) return [];
+const filterPointsInPolygon = (dataPoints) => {
+  if (!positions || positions.length === 0) return [];
 
-    return dataPoints.filter((point) => {
-      if (!point?.position) return false;
+  return dataPoints.filter((point) => {
+    if (!point?.position) return false; 
+    try {
+      const position = JSON.parse(point.position);
+      if (!Array.isArray(position) || position.length !== 2) return false;
+      return positions.some((polygon) => {
+        if (!isClosed(polygon)) return false;
+        const isInside = isPointInPolygon(position, polygon);
+        return isInside;
+      });
+    } catch (error) {
+      console.log("Error parsing position:", error.message || error);
+      return false; // Hata durumunda noktayı dahil etme
+    }
+  });
+};
 
-      try {
-        const position = JSON.parse(point.position);
-        if (!position || position.length < 2) return false;
-        return positions.some((polygon) => {
-          if (!polygon || !Array.isArray(polygon) || polygon.length < 4) {
-            return false;
-          }
-          return isPointInPolygon(position, polygon);
-        });
-      } catch (error) {
-        console.error("Error parsing position:", error);
-        return false;
-      }
-    });
-  };
 
   const MapClickHandler = () => {
     useMapEvents({
@@ -111,18 +121,21 @@ function App() {
 
           if (
             activePositions?.length >= 3 &&
-            isCloseTo(newPosition, activePositions[0])
+            isCloseTo(newPosition, activePositions?.[0])
           ) {
             updatedPositions[activePolygon] = [
-              ...(activePositions||[]),
-              activePositions[0],
+              ...(activePositions || []),
+              activePositions?.[0],
             ];
             setActivePolygon(activePolygon + 1);
             updatedPositions.push([]);
             return updatedPositions;
           }
 
-          updatedPositions[activePolygon] = [...(activePositions||[]), newPosition];
+          updatedPositions[activePolygon] = [
+            ...(activePositions || []),
+            newPosition,
+          ];
           return updatedPositions;
         });
       },
@@ -136,15 +149,17 @@ function App() {
     setActivePolygon(0);
   };
 
+  const points = openFilter ? filterPointsInPolygon(data?.innerData || []) : [];
+  console.log("points", points, positions);
   return (
     <>
       <MapContainer
-        center={[33.547119140625, -7.675495147705078]}
-        zoom={13}
+        center={[33.58945533558725, -7.626056671142579]}
+        zoom={14}
         style={{ height: "100vh", width: "100%" }}
       >
         <FilterResult
-          data={openFilter ? filterPointsInPolygon(data?.innerData || []) : []}
+          data={points}
           open={openFilter}
           setOpen={() => closeFilter()}
         />
@@ -159,7 +174,7 @@ function App() {
               <Polyline
                 key={polygonIndex}
                 positions={polygon}
-                color={polygonIndex === activePolygon ? "blue" : "green"}
+                color={p_colors[polygonIndex]}
               />
             ))}
             {positions?.map((item, polygonIndex) => {
@@ -228,7 +243,7 @@ function App() {
         <MarkerClusterGroup chunkedLoading>
           {!isLoading && (
             <>
-              {data?.innerData?.map((user) => {
+              {points?.map((user) => {
                 const position = JSON.parse(user?.position);
                 return (
                   <Marker
