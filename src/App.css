@@ -1,0 +1,26 @@
+.button-group {
+  position: absolute;
+  top: 10px;
+  left: 60px;
+  display: flex;
+  align-items: center;
+  z-index: 9999;
+}
+
+.my_polygons,
+.save-polygon {
+  height: 40px;
+  border-radius: 10px;
+}
+
+@media (max-width: 500px) {
+  .my_polygons,
+  .save-polygon {
+    height: 35px;
+    border-radius: 8px;
+  }
+  .button-group {
+    left: unset;
+    right: 10px;
+  }
+}

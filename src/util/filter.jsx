@@ -7,7 +7,7 @@ const FilterResult = ({ data, open, setOpen }) => {
     e.stopPropagation();
   };
   return (
-    <div className={`filter-result-container ${open && "open"}`}>
+    <section className={`filter-result-container ${open && "open"}`}>
       <span className="action-button" onClick={setOpen}>
         {!open ? (
           <svg
@@ -94,7 +94,7 @@ const FilterResult = ({ data, open, setOpen }) => {
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

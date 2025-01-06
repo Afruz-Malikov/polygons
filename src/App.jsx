@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "./App.css";
 import {
   MapContainer,
   TileLayer,
@@ -14,6 +15,8 @@ import { fetchUsers } from "./service/query.service";
 import FilterResult from "./util/filter";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { Button, Dropdown, Input, Modal, Space } from "antd";
+import { useSearchAppParams } from "./service/params.service";
 
 const icon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/12727/12727781.png",
@@ -23,11 +26,42 @@ const icon = new L.Icon({
 });
 
 function App() {
-  const [userLocation, setUserLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openFilter, setOpenFilter] = useState(false);
   const [positions, setPositions] = useState([[]]);
   const [activePolygon, setActivePolygon] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [polygonName, setPolygonName] = useState("");
+  const { getParams, setParams } = useSearchAppParams();
+  const showModal = (e) => {
+    e.stopPropagation();
+    setIsModalOpen(true);
+  };
+
+const handleOk = (e) => {
+  e.stopPropagation();
+  if (!polygonName) return alert("Please enter a name for the polygon!");
+  const oldPositions = JSON.parse(localStorage.getItem("polygons")) || [];
+  const editedIndex = getParams("edit");
+  let newPositions = [...oldPositions];
+  if (editedIndex !== null) {
+    newPositions[editedIndex] = { name: polygonName, positions };
+  } else {
+    newPositions.push({ name: polygonName, positions });
+  }
+  localStorage.setItem("polygons", JSON.stringify(newPositions));
+  alert("Polygons saved successfully!");
+  setPositions([[]]);
+  setActivePolygon(0);
+  setPolygonName("");
+  setIsModalOpen(false);
+};
+
+  const handleCancel = (e) => {
+    e.stopPropagation();
+    setIsModalOpen(false);
+  };
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["users"],
@@ -36,19 +70,19 @@ function App() {
 
   useEffect(() => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation([
-            position.coords.latitude,
-            position.coords.longitude,
-          ]);
+      // navigator.geolocation.getCurrentPosition(
+      //   (position) => {
+      //     setUserLocation([
+      //       position.coords.latitude,
+      //       position.coords.longitude,
+      //     ]);
           setLoading(false);
-        },
-        (error) => {
-          console.error("Geolocation error: ", error);
-          setLoading(false);
-        }
-      );
+      //   },
+      //   (error) => {
+      //     console.error("Geolocation error: ", error);
+      //     setLoading(false);
+      //   }
+      // );
     } else {
       setLoading(false);
     }
@@ -83,37 +117,44 @@ function App() {
     return inside;
   };
 
-const isClosed = (polygon) => {
-  if (!polygon || polygon.length < 4) return false;
-  const firstPoint = polygon[0];
-  const lastPoint = polygon[polygon.length - 1];
-  return firstPoint.lat === lastPoint.lat && firstPoint.lng === lastPoint.lng;
-};
+  const isClosed = (polygon) => {
+    if (!polygon || polygon.length < 4) return false;
+    const firstPoint = polygon[0];
+    const lastPoint = polygon[polygon.length - 1];
+    return firstPoint.lat === lastPoint.lat && firstPoint.lng === lastPoint.lng;
+  };
 
-const filterPointsInPolygon = (dataPoints) => {
-  if (!positions || positions.length === 0) return [];
+  const filterPointsInPolygon = (dataPoints) => {
+    if (!positions || positions.length === 0) return [];
 
-  return dataPoints.filter((point) => {
-    if (!point?.position) return false; 
-    try {
-      const position = JSON.parse(point.position);
-      if (!Array.isArray(position) || position.length !== 2) return false;
-      return positions.some((polygon) => {
-        if (!isClosed(polygon)) return false;
-        const isInside = isPointInPolygon(position, polygon);
-        return isInside;
-      });
-    } catch (error) {
-      console.log("Error parsing position:", error.message || error);
-      return false; // Hata durumunda noktayı dahil etme
-    }
-  });
-};
-
+    return dataPoints.filter((point) => {
+      if (!point?.position) return false;
+      try {
+        const position = JSON.parse(point.position);
+        if (!Array.isArray(position) || position.length !== 2) return false;
+        return positions.some((polygon) => {
+          if (!isClosed(polygon)) return false;
+          const isInside = isPointInPolygon(position, polygon);
+          return isInside;
+        });
+      } catch (error) {
+        console.log("Error parsing position:", error.message || error);
+        return false; // Hata durumunda noktayı dahil etme
+      }
+    });
+  };
 
   const MapClickHandler = () => {
     useMapEvents({
       click(e) {
+        const clickedElement = e.originalEvent.target;
+        if (
+          clickedElement.closest("button") ||
+          clickedElement.closest("section")
+        ) {
+          return;
+        }
+
         const newPosition = e.latlng;
         setPositions((prevPositions) => {
           const updatedPositions = [...prevPositions];
@@ -143,20 +184,48 @@ const filterPointsInPolygon = (dataPoints) => {
     return null;
   };
 
+  const savePolygons = (e) => {
+    setPolygonName(e.target.value);
+  };
+
+  const handleOpenChange = (nextOpen, info) => {
+    if (info.source === "trigger" || nextOpen) {
+      setOpen(nextOpen);
+    }
+  };
+
   const closeFilter = () => {
     setOpenFilter(!openFilter);
     setPositions([[]]);
     setActivePolygon(0);
   };
+  
+  const getPolygons = () => {
+    const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
+    return polygons.map((polygon, index) => {
+      return {
+        key: index,
+        label: polygon.name,
+        onClick: () => {
+          setPositions(polygon.positions);
+          setActivePolygon(polygon.positions.length - 1);
+          setOpenFilter(true);
+          setPolygonName(polygon.name);
+          setParams({ edit: index });
+          setOpen(false);
+        }, 
+      };
+    });
+  };
 
   const points = openFilter ? filterPointsInPolygon(data?.innerData || []) : [];
-  console.log("points", points, positions);
   return (
     <>
       <MapContainer
         center={[33.58945533558725, -7.626056671142579]}
         zoom={14}
         style={{ height: "100vh", width: "100%" }}
+        doubleClickZoom={false}
       >
         <FilterResult
           data={points}
@@ -281,6 +350,50 @@ const filterPointsInPolygon = (dataPoints) => {
             </>
           )}
         </MarkerClusterGroup>
+
+        <Space className="button-group" direction="horizontal">
+          {openFilter && positions.length > 1 && (
+            <Button
+              type="default"
+              onClick={showModal}
+              onDoubleClick={(e) => e.stopPropagation()}
+              className="save-polygon"
+            >
+              Save Polygon
+            </Button>
+          )}
+          <Dropdown
+            menu={{ items: getPolygons() }}
+            placement="bottomRight"
+            trigger={["click"]}
+            onOpenChange={handleOpenChange}
+            open={open}
+          >
+            <Button
+              className="my_polygons"
+              type="default"
+              onClick={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+            >
+              History
+            </Button>
+          </Dropdown>
+        </Space>
+        <Modal
+          title="Filter polygon name"
+          open={isModalOpen}
+          onOk={handleOk}
+          onCancel={handleCancel}
+          centered
+          style={{ zIndex: 9999 }}
+        >
+          <Input
+            placeholder="input with clear icon"
+            allowClear
+            onChange={savePolygons}
+            value={polygonName}
+          />
+        </Modal>
       </MapContainer>
     </>
   );
