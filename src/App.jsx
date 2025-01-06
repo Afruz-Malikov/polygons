@@ -55,6 +55,7 @@ const handleOk = (e) => {
   setPositions([[]]);
   setActivePolygon(0);
   setPolygonName("");
+  setParams({ edit: null });
   setIsModalOpen(false);
 };
 
@@ -218,6 +219,21 @@ const handleOk = (e) => {
     });
   };
 
+  const deletePolygon = () => {
+    const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
+    const editedIndex = getParams("edit");
+    if (editedIndex !== null) {
+      polygons.splice(editedIndex, 1);
+      localStorage.setItem("polygons", JSON.stringify(polygons));
+      alert("Polygon deleted successfully!");
+      setPositions([[]]);
+      setActivePolygon(0);
+      setPolygonName("");
+      setParams({ edit: null });
+      setIsModalOpen(false);
+    }
+  };
+
   const points = openFilter ? filterPointsInPolygon(data?.innerData || []) : [];
   return (
     <>
@@ -352,13 +368,18 @@ const handleOk = (e) => {
         </MarkerClusterGroup>
 
         <Space className="button-group" direction="horizontal">
-          {openFilter && positions.length > 1 && (
+          {JSON.parse(getParams("edit")) !== null && (
             <Button
-              type="default"
-              onClick={showModal}
-              onDoubleClick={(e) => e.stopPropagation()}
-              className="save-polygon"
+              type="primary"
+              onClick={deletePolygon}
+              className="my_polygons"
+              danger
             >
+              delete
+            </Button>
+          )}
+          {openFilter && positions.length > 1 && (
+            <Button type="default" onClick={showModal} className="save-polygon">
               Save Polygon
             </Button>
           )}
@@ -373,7 +394,6 @@ const handleOk = (e) => {
               className="my_polygons"
               type="default"
               onClick={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => e.stopPropagation()}
             >
               History
             </Button>
