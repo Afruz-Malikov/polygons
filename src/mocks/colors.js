@@ -1,7 +1,4 @@
 export const p_colors = [
-    "#8B4513", // Koyu Kahverengi (SaddleBrown)
-    "#483D8B", // Koyu Leylak Mavisi (DarkSlateBlue)
-    "#228B22", // Koyu Orman Yeşili (ForestGreen)
     "#0000FF", // Koyu Mavi
     "#000000", // Siyah
     "#006400", // Koyu Yeşil
@@ -12,4 +9,7 @@ export const p_colors = [
     "#556B2F", // Koyu Zeytin Yeşili
     "#191970", // Koyu Lacivert (Midnight Blue)
     "#B22222", // Ateş Kırmızısı (Firebrick)
+    "#8B4513", // Koyu Kahverengi (SaddleBrown)
+    "#483D8B", // Koyu Leylak Mavisi (DarkSlateBlue)
+    "#228B22", // Koyu Orman Yeşili (ForestGreen)
 ];
