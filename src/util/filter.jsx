@@ -105,3 +105,88 @@ FilterResult.propTypes = {
   open: PropTypes.bool,
   setOpen: PropTypes.func,
 };
+
+
+  //       const MapClickHandler = () => {
+  //     const addPointToPolygon = (newPoint) => {
+  //       setPositions((prevPositions) => {
+  //         const updatedPositions = [...prevPositions];
+  //         const activePositions = updatedPositions[0];
+
+  //         // En yakın çizgiyi bul
+  //         let closestSegmentIndex = -1;
+  //         let minDistance = Infinity;
+
+  //         for (let i = 0; i < activePositions.length - 1; i++) {
+  //           const pointA = activePositions[i];
+  //           const pointB = activePositions[i + 1];
+  //           const distance = distanceToSegment(newPoint, pointA, pointB);
+  //           if (distance < minDistance) {
+  //             minDistance = distance;
+  //             closestSegmentIndex = i;
+  //           }
+  //         }
+
+  //         // Yeni noktayı ekle
+  //         if (closestSegmentIndex !== -1) {
+  //           activePositions.splice(closestSegmentIndex + 1, 0, newPoint);
+  //         }
+
+  //         updatedPositions[0] = [...activePositions];
+  //         return updatedPositions;
+  //       });
+  //     };
+
+  //     const distanceToSegment = (point, pointA, pointB) => {
+  //       const x = point.lat;
+  //       const y = point.lng;
+  //       const x1 = pointA.lat;
+  //       const y1 = pointA.lng;
+  //       const x2 = pointB.lat;
+  //       const y2 = pointB.lng;
+
+  //       const A = x - x1;
+  //       const B = y - y1;
+  //       const C = x2 - x1;
+  //       const D = y2 - y1;
+
+  //       const dot = A * C + B * D;
+  //       const lenSq = C * C + D * D;
+  //       const param = lenSq !== 0 ? dot / lenSq : -1;
+
+  //       let xx, yy;
+
+  //       if (param < 0) {
+  //         xx = x1;
+  //         yy = y1;
+  //       } else if (param > 1) {
+  //         xx = x2;
+  //         yy = y2;
+  //       } else {
+  //         xx = x1 + param * C;
+  //         yy = y1 + param * D;
+  //       }
+
+  //       const dx = x - xx;
+  //       const dy = y - yy;
+  //       return Math.sqrt(dx * dx + dy * dy);
+  //     };
+
+  //     useMapEvents({
+  //       click(e) {
+  //         const newPosition = e.latlng;
+
+  //         if (positions[0]?.length > 4) {
+  //           addPointToPolygon(newPosition);
+  //         } else {
+  //           setPositions((prevPositions) => {
+  //             const updatedPositions = [...prevPositions];
+  //             updatedPositions[0] = [...(updatedPositions[0] || []), newPosition];
+  //             return updatedPositions;
+  //           });
+  //         }
+  //       },
+  //     });
+
+  //     return null;
+  //   };

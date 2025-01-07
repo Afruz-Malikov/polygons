@@ -39,25 +39,25 @@ function App() {
     setIsModalOpen(true);
   };
 
-const handleOk = (e) => {
-  e.stopPropagation();
-  if (!polygonName) return alert("Please enter a name for the polygon!");
-  const oldPositions = JSON.parse(localStorage.getItem("polygons")) || [];
-  const editedIndex = JSON.parse(getParams("edit"));
-  let newPositions = [...oldPositions];
-  if (editedIndex !== null) {
-    newPositions[editedIndex] = { name: polygonName, positions };
-  } else {
-    newPositions.push({ name: polygonName, positions });
-  }
-  localStorage.setItem("polygons", JSON.stringify(newPositions));
-  alert("Polygons saved successfully!");
-  setPositions([[]]);
-  setActivePolygon(0);
-  setPolygonName("");
-  setParams({ edit: null });
-  setIsModalOpen(false);
-};
+  const handleOk = (e) => {
+    e.stopPropagation();
+    if (!polygonName) return alert("Please enter a name for the polygon!");
+    const oldPositions = JSON.parse(localStorage.getItem("polygons")) || [];
+    const editedIndex = JSON.parse(getParams("edit"));
+    let newPositions = [...oldPositions];
+    if (editedIndex !== null) {
+      newPositions[editedIndex] = { name: polygonName, positions };
+    } else {
+      newPositions.push({ name: polygonName, positions });
+    }
+    localStorage.setItem("polygons", JSON.stringify(newPositions));
+    alert("Polygons saved successfully!");
+    setPositions([[]]);
+    setActivePolygon(0);
+    setPolygonName("");
+    setParams({ edit: null });
+    setIsModalOpen(false);
+  };
 
   const handleCancel = (e) => {
     e.stopPropagation();
@@ -77,7 +77,7 @@ const handleOk = (e) => {
       //       position.coords.latitude,
       //       position.coords.longitude,
       //     ]);
-          setLoading(false);
+      setLoading(false);
       //   },
       //   (error) => {
       //     console.error("Geolocation error: ", error);
@@ -200,7 +200,7 @@ const handleOk = (e) => {
     setPositions([[]]);
     setActivePolygon(0);
   };
-  
+
   const getPolygons = () => {
     const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
     return polygons.map((polygon, index) => {
@@ -214,7 +214,7 @@ const handleOk = (e) => {
           setPolygonName(polygon.name);
           setParams({ edit: index });
           setOpen(false);
-        }, 
+        },
       };
     });
   };
