@@ -7,9 +7,19 @@ import {
   useMapEvents,
   Polyline,
 } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button, Input, Modal, Space } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
+
+const m_icon = new L.Icon({
+  iconUrl:
+    "https://pngdow.com/files/preview/960x960/11695793287t9dj8am6f4wd1xq8qbk5camnl26y2ietbgej4vvipjhxm7pqkztgsqp38upcdfl1sy7bliczxp5vhqbkml9omhvt7emtl5yja3dq.png?type=free",
+  iconSize: [40, 41],
+  iconAnchor: [21, 38],
+  popupAnchor: [1, -34],
+});
+
 
 export const CreatePolygon = () => {
   const [loading, setLoading] = useState(true);
