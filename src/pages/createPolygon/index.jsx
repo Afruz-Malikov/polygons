@@ -10,7 +10,6 @@ import {
 import "leaflet/dist/leaflet.css";
 import { Button, Input, Modal, Space } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
-import { generateDarkHexColor } from "../../util/service";
 
 export const CreatePolygon = () => {
   const [loading, setLoading] = useState(true);
@@ -56,7 +55,7 @@ export const CreatePolygon = () => {
         center,
       };
     } else {
-      const color = generateDarkHexColor();
+      const color = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
       newPositions.push({
         name: polygonName,
         positions: positions[0],

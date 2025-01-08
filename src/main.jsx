@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import App from "./pages/home/App";
+import App from "./pages/home/home.jsx";
 import "./index.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CreatePolygon } from "./pages/createPolygon";
