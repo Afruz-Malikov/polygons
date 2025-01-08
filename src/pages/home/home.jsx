@@ -13,15 +13,16 @@ import { Button, Dropdown, Space } from "antd";
 import { useNavigate } from "react-router-dom";
 import { NewPolygonIcon } from "../../util/add.icon";
 
-const icon = new L.Icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/12727/12727781.png",
-  iconSize: [40, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
+// const icon = new L.Icon({
+//   iconUrl: "https://cdn-icons-png.flaticon.com/512/12727/12727781.png",
+//   iconSize: [40, 41],
+//   iconAnchor: [12, 41],
+//   popupAnchor: [1, -34],
+// });
 
 const m_icon = new L.Icon({
-  iconUrl: "https://www.iconpacks.net/icons/2/free-location-icon-2955-thumb.png",
+  iconUrl:
+    "https://www.iconpacks.net/icons/2/free-location-icon-2955-thumb.png",
   iconSize: [40, 41],
   iconAnchor: [20, 39],
   popupAnchor: [1, -34],
@@ -72,8 +73,6 @@ function App() {
     });
   };
 
-  console.log(openedPolygon, polygons);
-
   return (
     <>
       <MapContainer
@@ -89,8 +88,8 @@ function App() {
         {openedPolygon?.map((polygon, polygonIndex) => (
           <Polyline
             key={polygonIndex}
-            positions={polygon}
-            color={polygons[polygonIndex]?.color}
+            positions={polygon || []}
+            color={polygons?.[polygonIndex]?.color}
           />
         ))}
 
@@ -98,18 +97,30 @@ function App() {
           return item?.map((position, index) => (
             <Marker
               key={`${polygonIndex}-marker-${index}`}
-              position={position}
+              position={position || []}
               icon={m_icon}
             />
           ));
         })}
 
         {polygons?.map((polygon, index) => {
+          const customIcon = L.divIcon({
+            className: "custom-badge-icon",
+            html: `
+      <div style="text-align: center;">
+        <div style="border-radius: 5px; padding: 1px 8px;">
+          ${polygon.name}
+        </div>
+        <img src="https://cdn-icons-png.flaticon.com/512/12727/12727781.png" alt="icon" style="width: 34px; height: 34px;" />
+      </div>
+    `,
+          });
+
           return (
             <Marker
               key={`polygon-${index}`}
               position={polygon?.center || null}
-              icon={icon}
+              icon={customIcon}
               eventHandlers={{
                 click: () => {
                   setOpenedPolygons((prev) => {
@@ -117,7 +128,7 @@ function App() {
                     if (newOpenedPolygons[index]?.length > 0) {
                       newOpenedPolygons[index] = [];
                     } else {
-                      newOpenedPolygons[index] = polygon.positions;
+                      newOpenedPolygons[index] = polygon?.positions || [];
                     }
                     return newOpenedPolygons;
                   });
@@ -125,19 +136,19 @@ function App() {
                 },
               }}
             >
-              <Popup>
-                <p>Polygon: {polygon?.name}</p>
+              <Popup minWidth={110}>
+                <p style={{ minWidth: "120px" }}>Polygon: {polygon?.name}</p>
                 <p className="polygon-color">
                   Color: <span style={{ background: polygon?.color }}></span>
                 </p>
-                <details>
+                <details style={{ width: "100%" }}>
                   <summary>polygon coordinates</summary>
                   {polygon?.positions?.map((position, positionIndex) => (
                     <div key={positionIndex}>
-                      <small style={{ whiteSpace: "nowrap" }}>
-                        {positionIndex + 1} -{" "}
+                      <p style={{ inlineSize: "100%" }}>
+                        {positionIndex + 1}:{" "}
                         {[`${position?.lat}, ${position?.lng}`]}
-                      </small>
+                      </p>
                     </div>
                   ))}
                 </details>
@@ -145,6 +156,7 @@ function App() {
             </Marker>
           );
         })}
+
         <Space className="button-group" direction="horizontal">
           <Dropdown
             menu={{ items: getPolygons() }}

@@ -85,8 +85,6 @@ export const CreatePolygon = () => {
 
   const getPolygon = (id) => {
     const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
-    console.log("polygons", polygons);
-
     if (id != "new") {
       const polygon = polygons[id];
       if (polygon) {
@@ -253,7 +251,6 @@ export const CreatePolygon = () => {
               eventHandlers={{
                 dragend: (e) => {
                   const newLatLng = e.target.getLatLng();
-                  console.log("dragend", polygonIndex, index, activePolygon);
                   if (polygonIndex === 0) {
                     setPositions((prevPositions) => {
                       const updatedPositions = [...prevPositions];

@@ -23,6 +23,30 @@
     height: 15px;
   }
 }
+.icon-badge {
+  width: 40px !important;
+  height: 40px !important;
+  overflow: hidden;
+}
+
+.custom-badge-icon {
+  position: relative;
+  height: 20px !important;
+
+  > div {
+    position: relative;
+  }
+
+  > div > div {
+    position: absolute;
+    top: -60%;
+    left: 0%;
+    font-size: 12px;
+    white-space: nowrap;
+    background: #0098fd;
+    color: white;
+  }
+}
 
 @media (max-width: 500px) {
   .my_polygons,
