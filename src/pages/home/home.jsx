@@ -134,7 +134,7 @@ function App() {
                   <summary>polygon coordinates</summary>
                   {polygon?.positions?.map((position, positionIndex) => (
                     <div key={positionIndex}>
-                      <small>
+                      <small style={{ whiteSpace: "nowrap" }}>
                         {positionIndex + 1} -{" "}
                         {[`${position?.lat}, ${position?.lng}`]}
                       </small>
