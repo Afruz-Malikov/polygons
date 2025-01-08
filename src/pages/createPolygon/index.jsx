@@ -13,8 +13,7 @@ import { Button, Input, Modal, Space } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 
 const m_icon = new L.Icon({
-  iconUrl:
-    "https://www.iconpacks.net/icons/2/free-location-icon-2955-thumb.png",
+  iconUrl: "https://www.iconpacks.net/icons/2/free-location-icon-2955-thumb.png",
   iconSize: [40, 41],
   iconAnchor: [21, 38],
   popupAnchor: [1, -34],
@@ -289,7 +288,7 @@ export const CreatePolygon = () => {
                   });
                 },
                 click: () => {
-                  if (index === 0 && item.length > 3) {
+                  if (index === 0 && item.length > 2) {
                     setPositions((prevPositions) => {
                       const updatedPositions = [...prevPositions];
                       updatedPositions[polygonIndex] = [
@@ -311,21 +310,19 @@ export const CreatePolygon = () => {
           {id != "new" && (
             <>
               <Button
-                type="primary"
-                onClick={deletePolygon}
-                className="my_polygons"
-                danger
-              >
-                delete
-              </Button>
-              <Button
-                type="default"
-                onClick={showModal}
-                className="save-polygon"
-              >
-                Save Polygon
-              </Button>
+              type="primary"
+              onClick={deletePolygon}
+              className="my_polygons"
+              danger
+            >
+              delete
+            </Button>
             </>
+          )}
+          {positions[0].length > 3 && (
+            <Button type="default" onClick={showModal} className="save-polygon">
+              Save Polygon
+            </Button>
           )}
         </Space>
         <Modal
