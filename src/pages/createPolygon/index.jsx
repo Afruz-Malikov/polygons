@@ -13,7 +13,8 @@ import { Button, Input, Modal, Space } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 
 const m_icon = new L.Icon({
-  iconUrl: "https://www.iconpacks.net/icons/2/free-location-icon-2955-thumb.png",
+  iconUrl:
+    "https://www.iconpacks.net/icons/2/free-location-icon-2955-thumb.png",
   iconSize: [40, 41],
   iconAnchor: [21, 38],
   popupAnchor: [1, -34],
@@ -274,29 +275,31 @@ export const CreatePolygon = () => {
                   }
                 },
                 dblclick: () => {
-                  console.log("dbclick", polygonIndex, index, activePolygon);
                   setPositions((prevPositions) => {
                     const updatedPositions = [...prevPositions];
                     const activePositions = [...updatedPositions[polygonIndex]];
                     activePositions.splice(index, 1);
-                    if (activePositions.length === 0) {
-                      updatedPositions.splice(polygonIndex, 1);
+                    if (polygonIndex === 0 && activePositions.length === 0) {
+                      updatedPositions[polygonIndex] = [];
+                      setActivePolygon(0); 
                     } else {
                       updatedPositions[polygonIndex] = activePositions;
                     }
+
                     return updatedPositions;
                   });
                 },
+
                 click: () => {
                   if (index === 0 && item.length > 2) {
                     setPositions((prevPositions) => {
                       const updatedPositions = [...prevPositions];
                       updatedPositions[polygonIndex] = [
                         ...updatedPositions[polygonIndex],
-                        updatedPositions[polygonIndex][0],
+                        updatedPositions[polygonIndex][0], // İlk noktayı tekrar ekle
                       ];
-                      setActivePolygon(polygonIndex + 1);
-                      updatedPositions.push([]);
+                      setActivePolygon(polygonIndex + 1); // ActivePolygon'u bir artır
+                      updatedPositions.push([]); // Yeni bir poligon ekle
                       return updatedPositions;
                     });
                   }
@@ -310,20 +313,27 @@ export const CreatePolygon = () => {
           {id != "new" && (
             <>
               <Button
-              type="primary"
-              onClick={deletePolygon}
-              className="my_polygons"
-              danger
-            >
-              delete
-            </Button>
+                type="primary"
+                onClick={deletePolygon}
+                className="my_polygons"
+                danger
+              >
+                delete
+              </Button>
             </>
           )}
-          {positions[0].length > 3 && (
+          {positions?.[0]?.length > 3 && (
             <Button type="default" onClick={showModal} className="save-polygon">
               Save Polygon
             </Button>
           )}
+          <Button
+            type="default"
+            onClick={() => navigate("/")}
+            className="save-polygon"
+          >
+            ×
+          </Button>
         </Space>
         <Modal
           title="Filter polygon name"
