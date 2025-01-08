@@ -335,6 +335,7 @@ export const CreatePolygon = () => {
             placeholder="input with clear icon"
             allowClear
             onChange={savePolygons}
+            style={{ fontSize: "16px" }}
             value={polygonName}
           />
         </Modal>
