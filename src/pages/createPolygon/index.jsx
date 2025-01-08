@@ -7,10 +7,10 @@ import {
   useMapEvents,
   Polyline,
 } from "react-leaflet";
-import { p_colors } from "../../mocks/colors";
 import "leaflet/dist/leaflet.css";
 import { Button, Input, Modal, Space } from "antd";
-import { useSearchAppParams } from "../../service/params.service";
+import { useParams, useNavigate } from "react-router-dom";
+import { generateDarkHexColor } from "../../util/service";
 
 export const CreatePolygon = () => {
   const [loading, setLoading] = useState(true);
@@ -18,35 +18,78 @@ export const CreatePolygon = () => {
   const [activePolygon, setActivePolygon] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [polygonName, setPolygonName] = useState("");
-  const { getParams, setParams } = useSearchAppParams();
+  const navigate = useNavigate();
+  const { id } = useParams();
   const showModal = (e) => {
     e.stopPropagation();
     setIsModalOpen(true);
+  };
+
+  const calculatePolygonCentroid = (polygon) => {
+    if (!polygon || polygon.length === 0) {
+      throw new Error("Polygon points are required.");
+    }
+    let xSum = 0;
+    let ySum = 0;
+    polygon.forEach((point) => {
+      xSum += point.lat;
+      ySum += point.lng;
+    });
+    const centroid = {
+      lat: xSum / polygon.length,
+      lng: ySum / polygon.length,
+    };
+    return centroid;
   };
 
   const handleOk = (e) => {
     e.stopPropagation();
     if (!polygonName) return alert("Please enter a name for the polygon!");
     const oldPositions = JSON.parse(localStorage.getItem("polygons")) || [];
-    const editedIndex = JSON.parse(getParams("edit"));
     let newPositions = [...oldPositions];
-    if (editedIndex !== null) {
-      newPositions[editedIndex] = { name: polygonName, positions };
+    const center = calculatePolygonCentroid(positions[0]);
+    if (id != "new") {
+      newPositions[id] = {
+        ...newPositions[id],
+        name: polygonName,
+        positions: positions[0],
+        center,
+      };
     } else {
-      newPositions.push({ name: polygonName, positions });
+      const color = generateDarkHexColor();
+      newPositions.push({
+        name: polygonName,
+        positions: positions[0],
+        center,
+        color,
+      });
     }
     localStorage.setItem("polygons", JSON.stringify(newPositions));
     alert("Polygons saved successfully!");
-    setPositions([[]]);
-    setActivePolygon(0);
-    setPolygonName("");
-    setParams({ edit: null });
     setIsModalOpen(false);
+    navigate("/");
   };
 
   const handleCancel = (e) => {
     e.stopPropagation();
     setIsModalOpen(false);
+  };
+
+  const getPolygon = (id) => {
+    const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
+    console.log("polygons", polygons);
+
+    if (id != "new") {
+      const polygon = polygons[id];
+      if (polygon) {
+        setPositions([polygon.positions]);
+        setPolygonName(polygon.name);
+        setActivePolygon(1);
+      }
+    } else {
+      setPositions([[]]);
+      setPolygonName("");
+    }
   };
 
   useEffect(() => {
@@ -55,18 +98,19 @@ export const CreatePolygon = () => {
     } else {
       setLoading(false);
     }
-  }, []);
+    getPolygon(id);
+  }, [id]);
 
   if (loading) {
     return <div>Loading map...</div>;
   }
 
   const isCloseTo = (point1, point2, threshold = 0.001) => {
-    const latDiff = Math.abs(point1.lat - point2.lat);
-    const lngDiff = Math.abs(point1.lng - point2.lng);
+    const latDiff = Math.abs(point1?.lat - point2?.lat);
+    const lngDiff = Math.abs(point1?.lng - point2?.lng);
     return latDiff < threshold && lngDiff < threshold;
   };
-  
+
   const MapClickHandler = () => {
     useMapEvents({
       click(e) {
@@ -78,7 +122,7 @@ export const CreatePolygon = () => {
           return;
         }
 
-        const newPosition = e.latlng;
+        const newPosition = e?.latlng;
         setPositions((prevPositions) => {
           const updatedPositions = [...prevPositions];
           const activePositions = updatedPositions[activePolygon];
@@ -113,17 +157,68 @@ export const CreatePolygon = () => {
 
   const deletePolygon = () => {
     const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
-    const editedIndex = getParams("edit");
-    if (editedIndex !== null) {
-      polygons.splice(editedIndex, 1);
+    if (id != "new") {
+      polygons.splice(id, 1);
       localStorage.setItem("polygons", JSON.stringify(polygons));
       alert("Polygon deleted successfully!");
-      setPositions([[]]);
-      setActivePolygon(0);
-      setPolygonName("");
-      setParams({ edit: null });
       setIsModalOpen(false);
+      navigate("/");
     }
+  };
+
+  const addPointToPolygon = (newPoint) => {
+    setPositions((prevPositions) => {
+      const updatedPositions = [...prevPositions];
+      const activePositions = [...updatedPositions[0]];
+      let closestSegmentIndex = -1;
+      let minDistance = Infinity;
+      for (let i = 0; i < activePositions.length - 1; i++) {
+        const pointA = activePositions[i];
+        const pointB = activePositions[i + 1];
+        const distance = distanceToSegment(newPoint, pointA, pointB);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestSegmentIndex = i;
+        }
+      }
+      if (closestSegmentIndex !== -1) {
+        activePositions.splice(closestSegmentIndex + 1, 0, newPoint);
+      }
+      updatedPositions[0] = activePositions;
+      updatedPositions[1] = [];
+      return updatedPositions;
+    });
+  };
+
+  const distanceToSegment = (point, pointA, pointB) => {
+    const x = point?.lat;
+    const y = point?.lng;
+    const x1 = pointA?.lat;
+    const y1 = pointA?.lng;
+    const x2 = pointB?.lat;
+    const y2 = pointB?.lng;
+    const A = x - x1;
+    const B = y - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    const param = lenSq !== 0 ? dot / lenSq : -1;
+    let xx, yy;
+    if (param < 0) {
+      xx = x1;
+      yy = y1;
+    } else if (param > 1) {
+      xx = x2;
+      yy = y2;
+    } else {
+      xx = x1 + param * C;
+      yy = y1 + param * D;
+    }
+
+    const dx = x - xx;
+    const dy = y - yy;
+    return Math.sqrt(dx * dx + dy * dy);
   };
 
   return (
@@ -139,13 +234,7 @@ export const CreatePolygon = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler />
-        {positions.map((polygon, polygonIndex) => (
-          <Polyline
-            key={polygonIndex}
-            positions={polygon}
-            color={p_colors[polygonIndex]}
-          />
-        ))}
+        <Polyline positions={positions[0]} color={"blue"} />
         {positions?.map((item, polygonIndex) => {
           return item?.map((position, index) => (
             <Marker
@@ -155,23 +244,29 @@ export const CreatePolygon = () => {
               eventHandlers={{
                 dragend: (e) => {
                   const newLatLng = e.target.getLatLng();
-                  setPositions((prevPositions) => {
-                    const updatedPositions = [...prevPositions];
-                    const activePositions = [...updatedPositions[polygonIndex]];
-                    activePositions[index] = newLatLng;
-                    if (index === 0 && activePositions.length > 1) {
-                      activePositions[activePositions.length - 1] = newLatLng;
-                    } else if (
-                      index === activePositions.length - 1 &&
-                      activePositions.length > 1
-                    ) {
-                      activePositions[0] = newLatLng;
-                    }
-                    updatedPositions[polygonIndex] = activePositions;
-                    return updatedPositions;
-                  });
+                  console.log("dragend", polygonIndex, index, activePolygon);
+                  if (polygonIndex === 0) {
+                    setPositions((prevPositions) => {
+                      const updatedPositions = [...prevPositions];
+                      const activePositions = [...updatedPositions[0]];
+                      activePositions[index] = newLatLng;
+                      if (index === 0 && activePositions.length > 1) {
+                        activePositions[activePositions.length - 1] = newLatLng;
+                      } else if (
+                        index === activePositions.length - 1 &&
+                        activePositions.length > 1
+                      ) {
+                        activePositions[0] = newLatLng;
+                      }
+                      updatedPositions[0] = activePositions;
+                      return updatedPositions;
+                    });
+                  } else {
+                    addPointToPolygon(newLatLng);
+                  }
                 },
                 dblclick: () => {
+                  console.log("dbclick", polygonIndex, index, activePolygon);
                   setPositions((prevPositions) => {
                     const updatedPositions = [...prevPositions];
                     const activePositions = [...updatedPositions[polygonIndex]];
@@ -204,7 +299,7 @@ export const CreatePolygon = () => {
         })}
 
         <Space className="button-group" direction="horizontal">
-          {JSON.parse(getParams("edit")) !== null && (
+          {id != "new" && (
             <Button
               type="primary"
               onClick={deletePolygon}

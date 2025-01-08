@@ -7,11 +7,11 @@ import {
   Popup,
   Polyline,
 } from "react-leaflet";
-import { p_colors } from "../../mocks/colors";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button, Dropdown, Space } from "antd";
 import { useNavigate } from "react-router-dom";
+import { NewPolygonIcon } from "../../util/add.icon";
 
 const icon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/12727/12727781.png",
@@ -24,6 +24,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [polygons, setPolygons] = useState([]);
+  const [openedPolygon, setOpenedPolygons] = useState([]);
+  const [updated, setUpdated] = useState(false);
   const navigate = useNavigate();
 
   const fetchPolygons = () => {
@@ -63,6 +65,8 @@ function App() {
     });
   };
 
+  console.log(openedPolygon, polygons);
+
   return (
     <>
       <MapContainer
@@ -75,32 +79,59 @@ function App() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {[]?.map((polygon, polygonIndex) => (
+        {openedPolygon?.map((polygon, polygonIndex) => (
           <Polyline
             key={polygonIndex}
             positions={polygon}
-            color={p_colors[polygonIndex]}
+            color={polygons[polygonIndex]?.color}
           />
         ))}
-        {[]?.map((item) => {
+
+        {openedPolygon?.map((item, polygonIndex) => {
           return item?.map((position, index) => (
-            <Marker key={index} position={position} draggable={true} />
+            <Marker
+              key={`${polygonIndex}-marker-${index}`}
+              position={position}
+            />
           ));
         })}
-        {[]?.map((user) => {
-          const position = JSON.parse(user?.position);
+
+        {polygons?.map((polygon, index) => {
           return (
             <Marker
-              key={user?.id}
-              position={position[0] != null ? position : null}
+              key={`polygon-${index}`}
+              position={polygon?.center || null}
               icon={icon}
+              eventHandlers={{
+                click: () => {
+                  setOpenedPolygons((prev) => {
+                    const newOpenedPolygons = [...prev];
+                    if (newOpenedPolygons[index]?.length > 0) {
+                      newOpenedPolygons[index] = [];
+                    } else {
+                      newOpenedPolygons[index] = polygon.positions;
+                    }
+                    return newOpenedPolygons;
+                  });
+                  setUpdated(!updated);
+                },
+              }}
             >
               <Popup>
-                <p>polygon</p>
-                <br />
+                <p>Polygon: {polygon?.name}</p>
+                <p className="polygon-color">
+                  Color: <span style={{ background: polygon?.color }}></span>
+                </p>
                 <details>
-                  <summary>description</summary>
-                  <small>{778}</small>
+                  <summary>polygon coordinates</summary>
+                  {polygon?.positions?.map((position, positionIndex) => (
+                    <div key={positionIndex}>
+                      <small>
+                        {positionIndex + 1} -{" "}
+                        {[`${position?.lat}, ${position?.lng}`]}
+                      </small>
+                    </div>
+                  ))}
                 </details>
               </Popup>
             </Marker>
@@ -122,6 +153,15 @@ function App() {
               Polygons
             </Button>
           </Dropdown>
+          <Button
+            className="my_polygons"
+            type="default"
+            onClick={(e) => {
+              e.stopPropagation(), navigate("/polygon/new");
+            }}
+          >
+            New Polygon <NewPolygonIcon />
+          </Button>
         </Space>
       </MapContainer>
     </>

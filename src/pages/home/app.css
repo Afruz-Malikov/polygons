@@ -13,6 +13,17 @@
   border-radius: 10px;
 }
 
+.polygon-color {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  span {
+    width: 50px;
+    height: 15px;
+  }
+}
+
 @media (max-width: 500px) {
   .my_polygons,
   .save-polygon {
