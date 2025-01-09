@@ -40,8 +40,8 @@ export const CreatePolygon = () => {
     let xSum = 0;
     let ySum = 0;
     polygon.forEach((point) => {
-      xSum += point.lat;
-      ySum += point.lng;
+      xSum += point?.lat;
+      ySum += point?.lng;
     });
     const centroid = {
       lat: xSum / polygon.length,

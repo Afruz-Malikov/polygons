@@ -72,8 +72,8 @@ function App() {
   };
 
   const isCloseTo = (point1, point2, threshold = 0.001) => {
-    const latDiff = Math.abs(point1.lat - point2.lat);
-    const lngDiff = Math.abs(point1.lng - point2.lng);
+    const latDiff = Math.abs(point1?.lat - point2?.lat);
+    const lngDiff = Math.abs(point1?.lng - point2?.lng);
     return latDiff < threshold && lngDiff < threshold;
   };
 
@@ -83,10 +83,10 @@ function App() {
     let inside = false;
 
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].lat,
-        yi = polygon[i].lng;
-      const xj = polygon[j].lat,
-        yj = polygon[j].lng;
+      const xi = polygon[i]?.lat,
+        yi = polygon[i]?.lng;
+      const xj = polygon[j]?.lat,
+        yj = polygon[j]?.lng;
 
       const intersect =
         yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
@@ -100,7 +100,7 @@ function App() {
     if (!polygon || polygon.length < 4) return false;
     const firstPoint = polygon[0];
     const lastPoint = polygon[polygon.length - 1];
-    return firstPoint.lat === lastPoint.lat && firstPoint.lng === lastPoint.lng;
+    return firstPoint?.lat === lastPoint?.lat && firstPoint?.lng === lastPoint?.lng;
   };
 
   const filterPointsInPolygon = (dataPoints) => {
@@ -112,7 +112,7 @@ function App() {
         return positions.some((polygon) => {
           if (!isClosed(polygon)) return false;
           return point?.positions?.some((position) => {
-            return isPointInPolygon([position.lat, position.lng], polygon);
+            return isPointInPolygon([position?.lat, position?.lng], polygon);
           });
         });
       } catch (error) {
@@ -133,7 +133,7 @@ function App() {
           return;
         }
 
-        const newPosition = e.latlng;
+        const newPosition = e?.latlng;
         setPositions((prevPositions) => {
           const updatedPositions = [...prevPositions];
           const activePositions = updatedPositions[activePolygon];
