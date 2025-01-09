@@ -44,7 +44,14 @@
     font-size: 12px;
     white-space: nowrap;
     background: #0098fd;
+    border: 1px solid #fff;
     color: white;
+  }
+}
+
+.custom-point-icon{
+  >span{
+    border: 1px solid #fff;
   }
 }
 
