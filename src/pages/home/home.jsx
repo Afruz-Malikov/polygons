@@ -16,6 +16,14 @@ import { NewPolygonIcon } from "../../util/add.icon";
 import FilterResult from "../filter/filter";
 import { p_colors } from "../../mocks/colors";
 
+const m_icon = new L.Icon({
+  iconUrl:
+    "https://www.iconpacks.net/icons/2/free-location-icon-2955-thumb.png",
+  iconSize: [40, 41],
+  iconAnchor: [20, 39],
+  popupAnchor: [1, -34],
+});
+
 function App() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -196,6 +204,7 @@ function App() {
                   key={index}
                   position={position}
                   draggable={true}
+                  icon={m_icon}
                   eventHandlers={{
                     dragend: (e) => {
                       const newLatLng = e.target.getLatLng();
