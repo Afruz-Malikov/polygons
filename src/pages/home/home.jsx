@@ -100,7 +100,9 @@ function App() {
     if (!polygon || polygon.length < 4) return false;
     const firstPoint = polygon[0];
     const lastPoint = polygon[polygon.length - 1];
-    return firstPoint?.lat === lastPoint?.lat && firstPoint?.lng === lastPoint?.lng;
+    return (
+      firstPoint?.lat === lastPoint?.lat && firstPoint?.lng === lastPoint?.lng
+    );
   };
 
   const filterPointsInPolygon = (dataPoints) => {
@@ -108,10 +110,12 @@ function App() {
 
     return dataPoints.filter((point) => {
       if (!point?.positions) return false;
-      try {1
+      try {
+        1;
         return positions.some((polygon) => {
           if (!isClosed(polygon)) return false;
-          return point?.positions?.some((position) => {
+          const points = [...(point?.positions || []), point?.center];
+          return points?.some((position) => {
             return isPointInPolygon([position?.lat, position?.lng], polygon);
           });
         });
@@ -166,10 +170,18 @@ function App() {
     setOpenFilter(!openFilter);
     setPositions([[]]);
     setActivePolygon(0);
-  setOpenedPolygons([]);
+    setOpenedPolygons([]);
   };
 
   const result = openFilter ? filterPointsInPolygon(polygons) : [];
+  const getPolygonPoints = () => {
+    const points = openedPolygon.length
+      ? []
+      : result?.map((polygon) => {
+          return polygon?.positions;
+        });
+    return setOpenedPolygons(points);
+  };
   return (
     <>
       <MapContainer
@@ -179,10 +191,19 @@ function App() {
         doubleClickZoom={false}
       >
         <FilterResult
-          data={[]}
+          data={result}
           open={openFilter}
           setOpen={() => closeFilter()}
         />
+        <Button
+          className={`show-polygon-points ${openFilter ? "open" : ""} ${
+            result?.length === 0 && "disabled"
+          }`}
+          type="primary"
+          onClick={getPolygonPoints}
+        >
+          Points
+        </Button>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -290,6 +311,7 @@ function App() {
         {result?.map((polygon, index) => {
           const customIcon = L.divIcon({
             className: "custom-badge-icon",
+            iconAnchor: [17, 10],
             html: `
       <div style="text-align: center;">
         <div style="border-radius: 15px; padding: 0px 8px;">
@@ -305,19 +327,6 @@ function App() {
               key={`polygon-${index}`}
               position={polygon?.center || null}
               icon={customIcon}
-              eventHandlers={{
-                click: () => {
-                  setOpenedPolygons((prev) => {
-                    const newOpenedPolygons = [...prev];
-                    if (newOpenedPolygons[index]?.length > 0) {
-                      newOpenedPolygons[index] = [];
-                    } else {
-                      newOpenedPolygons[index] = polygon?.positions || [];
-                    }
-                    return newOpenedPolygons;
-                  });
-                },
-              }}
             >
               <Popup minWidth={110}>
                 <p style={{ minWidth: "120px" }}>Polygon: {polygon?.name}</p>

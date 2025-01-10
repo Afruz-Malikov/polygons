@@ -49,10 +49,35 @@
   }
 }
 
-.custom-point-icon{
-  >span{
+.custom-point-icon {
+  > span {
     border: 1px solid #fff;
   }
+}
+
+.show-polygon-points {
+  position: fixed;
+  width: 280px;
+  height: 40px;
+  bottom: 20px;
+  right: -300px;
+  z-index: 99999;
+  transition: all 0.2s;
+}
+
+.show-polygon-points.open {
+  right: 20px;
+}
+
+.show-polygon-points.disabled {
+  background: #999;
+  border-color: #666;
+  cursor: not-allowed;
+}
+
+.show-polygon-points.disabled:hover {
+  background: #999 !important;
+  border-color: #666;
 }
 
 @media (max-width: 500px) {
@@ -64,5 +89,15 @@
   .button-group {
     left: unset;
     right: 10px;
+  }
+
+  .show-polygon-points {
+    width: var(--point-width);
+    right: 10px !important;
+    bottom: -80px;
+  }
+
+  .show-polygon-points.open {
+    bottom: 20px;
   }
 }

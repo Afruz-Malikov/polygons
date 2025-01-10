@@ -71,8 +71,8 @@ const FilterResult = ({ data, open, setOpen }) => {
           </svg>
         )}
       </span>
-      <div className="result-box">
-        <h2>Finded location ({data?.length})</h2>
+      <section className="result-box">
+        <h2>Finded polygons ({data?.length})</h2>
         <div>
           {data?.length > 0 ? (
             data?.map((point, index) => {
@@ -82,10 +82,9 @@ const FilterResult = ({ data, open, setOpen }) => {
                   className="result-item"
                   onClick={removeOtherClickEvents}
                 >
-                  <h4>{point?.property_type}</h4>
-                  <p>room number: {point?.rooms_number}</p>
+                  <h4>{point?.name}</h4>
                 </div>
-              ) : null;
+              ) : "";
             })
           ) : (
             <span style={{ margin: "auto" }}>
@@ -93,7 +92,8 @@ const FilterResult = ({ data, open, setOpen }) => {
             </span>
           )}
         </div>
-      </div>
+
+      </section>
     </div>
   );
 };

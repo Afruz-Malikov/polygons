@@ -64,9 +64,9 @@
 @media (max-width: 500px) {
   .filter-result-container {
     position: fixed;
-    width: 100%;
+    width: calc(100% - var(--point-width));
     top: calc(100dvh - 70px);
-    right: 0;
+    left: 0;
     height: 30dvh;
   }
 

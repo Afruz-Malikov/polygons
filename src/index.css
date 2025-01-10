@@ -1,3 +1,7 @@
+:root{
+  --point-width: 70px;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;
