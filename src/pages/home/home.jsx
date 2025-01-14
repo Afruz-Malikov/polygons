@@ -6,33 +6,39 @@ import {
   Marker,
   Popup,
   Polyline,
-  useMapEvents,
+  Circle,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button, Dropdown, Space } from "antd";
 import { useNavigate } from "react-router-dom";
 import { NewPolygonIcon } from "../../util/add.icon";
+import { FilterComponent } from "./filter";
 import FilterResult from "../filter/filter";
-import { p_colors } from "../../mocks/colors";
-
-const m_icon = new L.Icon({
-  iconUrl:
-    "https://www.iconpacks.net/icons/2/free-location-icon-2955-thumb.png",
-  iconSize: [40, 41],
-  iconAnchor: [20, 39],
-  popupAnchor: [1, -34],
-});
+import { getCircleBoundaryPoint, isClosed, isPointInPolygon } from "./featcher";
 
 function App() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [open1, setOpen1] = useState(false);
   const [polygons, setPolygons] = useState([]);
   const [openedPolygon, setOpenedPolygons] = useState([]);
+  const [openedCircle, setOpenedCircle] = useState([]);
   const [openFilter, setOpenFilter] = useState(false);
   const [positions, setPositions] = useState([[]]);
   const [activePolygon, setActivePolygon] = useState(0);
   const navigate = useNavigate();
+
+  const polygonTypes = ["polygon", "circle"].map((type) => {
+    return {
+      key: type,
+      label: <span style={{ textTransform: "capitalize" }}>{type}</span>,
+      onClick: () => {
+        navigate(`/polygon/new/${type}`);
+        setOpen(false);
+      },
+    };
+  });
 
   const fetchPolygons = () => {
     const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
@@ -58,62 +64,70 @@ function App() {
     }
   };
 
+  const handleOpenChange1 = (nextOpen, info) => {
+    if (info.source === "trigger" || nextOpen) {
+      setOpen1(nextOpen);
+    }
+  };
+
   const getPolygons = () => {
     return polygons.map((polygon, index) => {
       return {
         key: index,
         label: polygon.name,
         onClick: () => {
-          navigate(`/polygon/${index}`);
+          navigate(`/polygon/${index}/${polygon?.type || "polygon"}`);
           setOpen(false);
         },
       };
     });
   };
 
-  const isCloseTo = (point1, point2, threshold = 0.001) => {
-    const latDiff = Math.abs(point1?.lat - point2?.lat);
-    const lngDiff = Math.abs(point1?.lng - point2?.lng);
-    return latDiff < threshold && lngDiff < threshold;
-  };
 
-  const isPointInPolygon = (point, polygon) => {
-    const x = point[0],
-      y = point[1];
-    let inside = false;
-
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i]?.lat,
-        yi = polygon[i]?.lng;
-      const xj = polygon[j]?.lat,
-        yj = polygon[j]?.lng;
-
-      const intersect =
-        yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-      if (intersect) inside = !inside;
-    }
-
-    return inside;
-  };
-
-  const isClosed = (polygon) => {
-    if (!polygon || polygon.length < 4) return false;
-    const firstPoint = polygon[0];
-    const lastPoint = polygon[polygon.length - 1];
-    return (
-      firstPoint?.lat === lastPoint?.lat && firstPoint?.lng === lastPoint?.lng
-    );
-  };
 
   const filterPointsInPolygon = (dataPoints) => {
     if (!positions || positions.length === 0) return [];
 
     return dataPoints.filter((point) => {
-      if (!point?.positions) return false;
       try {
-        1;
         return positions.some((polygon) => {
           if (!isClosed(polygon)) return false;
+
+          // Circle tipi noktalar için
+          if (point.type === "circle") {
+            const center = [point.center?.lat, point.center?.lng];
+            const radius = point.radius; // Circle'ın yarıçapı (metre)
+
+            // Merkezi kontrol et: Çemberin merkezi poligon içinde mi?
+            if (isPointInPolygon(center, polygon)) return true;
+
+            // Circle sınırındaki noktaları kontrol et
+            const angleStep = 10; // Sınırda 10 derecelik aralıklarla kontrol edelim
+
+            for (let angle = 0; angle < 360; angle += angleStep) {
+              const boundaryPoint = getCircleBoundaryPoint(
+                point.center.lat,
+                point.center.lng,
+                radius,
+                angle
+              );
+
+              // Sınırdaki bir nokta poligon içinde mi?
+              if (
+                isPointInPolygon(
+                  [boundaryPoint.lat, boundaryPoint.lng],
+                  polygon
+                )
+              ) {
+                return true; // Çemberin bir kısmı poligon içinde
+              }
+            }
+
+            // Eğer hiçbir sınır noktası poligon içinde değilse, false dönebiliriz
+            return false;
+          }
+
+          // Polygon tipi noktalarda
           const points = [...(point?.positions || []), point?.center];
           return points?.some((position) => {
             return isPointInPolygon([position?.lat, position?.lng], polygon);
@@ -121,49 +135,9 @@ function App() {
         });
       } catch (error) {
         console.log("Error parsing position:", error.message || error);
-        return false; // Hata durumunda noktayı dahil etme
+        return false;
       }
     });
-  };
-
-  const MapClickHandler = () => {
-    useMapEvents({
-      click(e) {
-        const clickedElement = e.originalEvent.target;
-        if (
-          clickedElement.closest("button") ||
-          clickedElement.closest("section")
-        ) {
-          return;
-        }
-
-        const newPosition = e?.latlng;
-        setPositions((prevPositions) => {
-          const updatedPositions = [...prevPositions];
-          const activePositions = updatedPositions[activePolygon];
-
-          if (
-            activePositions?.length >= 3 &&
-            isCloseTo(newPosition, activePositions?.[0])
-          ) {
-            updatedPositions[activePolygon] = [
-              ...(activePositions || []),
-              activePositions?.[0],
-            ];
-            setActivePolygon(activePolygon + 1);
-            updatedPositions.push([]);
-            return updatedPositions;
-          }
-
-          updatedPositions[activePolygon] = [
-            ...(activePositions || []),
-            newPosition,
-          ];
-          return updatedPositions;
-        });
-      },
-    });
-    return null;
   };
 
   const closeFilter = () => {
@@ -171,16 +145,27 @@ function App() {
     setPositions([[]]);
     setActivePolygon(0);
     setOpenedPolygons([]);
+    setOpenedCircle([]);
   };
 
   const result = openFilter ? filterPointsInPolygon(polygons) : [];
   const getPolygonPoints = () => {
-    const points = openedPolygon.length
-      ? []
-      : result?.map((polygon) => {
-          return polygon?.positions;
-        });
-    return setOpenedPolygons(points);
+    let points = [];
+    let circle = [];
+    if (openedPolygon.length || openedCircle.length) {
+      points = [];
+      circle = [];
+    } else {
+      result?.map((polygon) => {
+        if (polygon?.type === "circle") {
+          circle.push(polygon);
+        } else {
+          points.push(polygon?.positions);
+        }
+      });
+    }
+    setOpenedPolygons(points);
+    setOpenedCircle(circle);
   };
   return (
     <>
@@ -190,11 +175,6 @@ function App() {
         style={{ height: "100vh", width: "100%" }}
         doubleClickZoom={false}
       >
-        <FilterResult
-          data={result}
-          open={openFilter}
-          setOpen={() => closeFilter()}
-        />
         <Button
           className={`show-polygon-points ${openFilter ? "open" : ""} ${
             result?.length === 0 && "disabled"
@@ -204,90 +184,41 @@ function App() {
         >
           Points
         </Button>
+        <FilterResult
+          data={result}
+          open={openFilter}
+          setOpen={() => closeFilter()}
+        />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-
         {openFilter && (
-          <>
-            <MapClickHandler />
-            {positions.map((polygon, polygonIndex) => (
-              <Polyline
-                key={polygonIndex}
-                positions={polygon}
-                color={p_colors[polygonIndex]}
-              />
-            ))}
-            {positions?.map((item, polygonIndex) => {
-              return item?.map((position, index) => (
-                <Marker
-                  key={index}
-                  position={position}
-                  draggable={true}
-                  icon={m_icon}
-                  eventHandlers={{
-                    dragend: (e) => {
-                      const newLatLng = e.target.getLatLng();
-                      setPositions((prevPositions) => {
-                        const updatedPositions = [...prevPositions];
-                        const activePositions = [
-                          ...updatedPositions[polygonIndex],
-                        ];
-                        activePositions[index] = newLatLng;
-                        if (index === 0 && activePositions.length > 1) {
-                          activePositions[activePositions.length - 1] =
-                            newLatLng;
-                        } else if (
-                          index === activePositions.length - 1 &&
-                          activePositions.length > 1
-                        ) {
-                          activePositions[0] = newLatLng;
-                        }
-                        updatedPositions[polygonIndex] = activePositions;
-                        return updatedPositions;
-                      });
-                    },
-                    dblclick: () => {
-                      setPositions((prevPositions) => {
-                        const updatedPositions = [...prevPositions];
-                        const activePositions = [
-                          ...updatedPositions[polygonIndex],
-                        ];
-                        activePositions.splice(index, 1);
-                        if (activePositions.length === 0) {
-                          updatedPositions.splice(polygonIndex, 1);
-                        } else {
-                          updatedPositions[polygonIndex] = activePositions;
-                        }
-                        return updatedPositions;
-                      });
-                    },
-                    click: () => {
-                      if (index === 0 && item.length > 3) {
-                        setPositions((prevPositions) => {
-                          const updatedPositions = [...prevPositions];
-                          updatedPositions[polygonIndex] = [
-                            ...updatedPositions[polygonIndex],
-                            updatedPositions[polygonIndex][0],
-                          ];
-                          setActivePolygon(polygonIndex + 1);
-                          updatedPositions.push([]);
-                          return updatedPositions;
-                        });
-                      }
-                    },
-                  }}
-                />
-              ));
-            })}
-          </>
+          <FilterComponent
+            positions={positions}
+            setActivePolygon={setActivePolygon}
+            setPositions={setPositions}
+            setOpen={setOpen}
+            activePolygon={activePolygon}
+            closeFilter={closeFilter}
+            openFilter={openFilter}
+            result={result}
+          />
         )}
         {openedPolygon?.map((polygon, polygonIndex) => (
           <Polyline
             key={polygonIndex}
             positions={polygon || []}
             color={polygons?.[polygonIndex]?.color}
+          />
+        ))}
+
+        {openedCircle?.map((circle, circleIndex) => (
+          <Circle
+            key={circleIndex}
+            center={circle?.center}
+            radius={circle?.radius}
+            color={circle?.color}
           />
         ))}
 
@@ -365,15 +296,21 @@ function App() {
               Polygons
             </Button>
           </Dropdown>
-          <Button
-            className="my_polygons"
-            type="default"
-            onClick={(e) => {
-              e.stopPropagation(), navigate("/polygon/new");
-            }}
+          <Dropdown
+            menu={{ items: polygonTypes }}
+            placement="bottomRight"
+            trigger={["click"]}
+            onOpenChange={handleOpenChange1}
+            open={open1}
           >
-            New Polygon <NewPolygonIcon />
-          </Button>
+            <Button
+              className="my_polygons"
+              type="default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              New Polygon <NewPolygonIcon />
+            </Button>
+          </Dropdown>
         </Space>
       </MapContainer>
     </>

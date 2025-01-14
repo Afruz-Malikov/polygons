@@ -14,7 +14,7 @@ createRoot(document.getElementById("root")).render(
       <QueryClientProvider client={queryClient}>
         <Routes>
           <Route path="/" element={<App />} />
-          <Route path="/polygon/:id" element={<CreatePolygon />} />
+          <Route path="/polygon/:id/:type" element={<CreatePolygon />} />
         </Routes>
       </QueryClientProvider>
     </BrowserRouter>
