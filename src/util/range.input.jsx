@@ -25,21 +25,19 @@ export const RangeInput = ({ title, value, setValue }) => {
         className="range-slider__range"
         type="range"
         name="range"
-        max={5000}
+        max={6371000}
         min={0}
         value={value}
         onChange={handleInputChange}
       />
       <span className="fs2 range-slider__value">{value}</span>
       <div className="df fdc aic counter">
-        <i
-          className="cp counter-plus"
-          onClick={incrementValue}
-        >▲</i>
-        <i
-          className="cp counter-minus"
-          onClick={decrementValue}
-        >▼</i>
+        <i className="cp counter-plus" onClick={incrementValue}>
+          ▲
+        </i>
+        <i className="cp counter-minus" onClick={decrementValue}>
+          ▼
+        </i>
       </div>
     </section>
   );

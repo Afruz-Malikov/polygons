@@ -83,8 +83,6 @@ function App() {
     });
   };
 
-
-
   const filterPointsInPolygon = (dataPoints) => {
     if (!positions || positions.length === 0) return [];
 
@@ -203,6 +201,8 @@ function App() {
             closeFilter={closeFilter}
             openFilter={openFilter}
             result={result}
+            setOpenedPolygon={setOpenedPolygons}
+            setOpenedCircle={setOpenedCircle}
           />
         )}
         {openedPolygon?.map((polygon, polygonIndex) => (
@@ -266,14 +266,26 @@ function App() {
                 </p>
                 <details style={{ width: "100%" }}>
                   <summary>polygon coordinates</summary>
-                  {polygon?.positions?.map((position, positionIndex) => (
-                    <div key={positionIndex}>
+                  {polygon.type !== "circle" ? (
+                    polygon?.positions?.map((position, positionIndex) => (
+                      <div key={positionIndex}>
+                        <p style={{ inlineSize: "100%" }}>
+                          {positionIndex + 1}:{" "}
+                          {[`${position?.lat}, ${position?.lng}`]}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <>
                       <p style={{ inlineSize: "100%" }}>
-                        {positionIndex + 1}:{" "}
-                        {[`${position?.lat}, ${position?.lng}`]}
+                        Center coordinates: <br />
+                        {[`${polygon.center?.lat}, ${polygon.center?.lng}`]}
                       </p>
-                    </div>
-                  ))}
+                      <p style={{ inlineSize: "100%" }}>
+                        Radius: {polygon.radius}m
+                      </p>
+                    </>
+                  )}
                 </details>
               </Popup>
             </Marker>

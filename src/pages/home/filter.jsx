@@ -16,6 +16,8 @@ export const FilterComponent = ({
   setActivePolygon,
   setPositions,
   activePolygon,
+  setOpenedPolygon,
+  setOpenedCircle,
 }) => {
   const isCloseTo = (point1, point2, threshold = 0.001) => {
     const latDiff = Math.abs(point1?.lat - point2?.lat);
@@ -81,6 +83,8 @@ export const FilterComponent = ({
             icon={m_icon}
             eventHandlers={{
               dragend: (e) => {
+                setOpenedCircle([]);
+                setOpenedPolygon([]);
                 const newLatLng = e.target.getLatLng();
                 setPositions((prevPositions) => {
                   const updatedPositions = [...prevPositions];
@@ -139,4 +143,6 @@ FilterComponent.propTypes = {
   setPositions: PropTypes.func,
   setOpen: PropTypes.func,
   activePolygon: PropTypes.number,
+  setOpenedPolygon: PropTypes.func,
+  setOpenedCircle: PropTypes.func,
 };
