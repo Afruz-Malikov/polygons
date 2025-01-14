@@ -83,9 +83,14 @@ export const CreatePolygon = () => {
     if (id != "new") {
       const polygon = polygons[id];
       if (polygon) {
-        setPositions([polygon.positions]);
         setPolygonName(polygon.name);
-        setActivePolygon(1);
+        if (type === "circle") {
+          setCenter(polygon.center);
+          setRadius(polygon.radius);
+        } else {
+          setPositions([polygon.positions]);
+          setActivePolygon(1);
+        }
       }
     } else {
       setPositions([[]]);
