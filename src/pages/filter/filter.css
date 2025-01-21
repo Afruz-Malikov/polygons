@@ -40,7 +40,7 @@
   padding: 10px 0;
 }
 
-.result-box > div {
+.result-box > .result-list {
   width: 100%;
   height: 100%;
   padding: 10px;
@@ -65,7 +65,7 @@
   .filter-result-container {
     position: fixed;
     width: calc(100% - var(--point-width));
-    top: calc(100dvh - 70px);
+    top: calc(100dvh - 90px);
     left: 0;
     height: 30dvh;
   }
@@ -73,11 +73,18 @@
   .result-box {
     width: calc(100% - 60px);
     height: calc(100% - 50px);
-    transform: translateY(70px);
+    transform: translateY(170px);
     transition: all 0.5;
   }
 
   .filter-result-container.open .result-box {
     transform: translateY(0px);
+  }
+
+  .filter-type {
+    justify-content: center;
+    > span {
+      display: none;
+    }
   }
 }

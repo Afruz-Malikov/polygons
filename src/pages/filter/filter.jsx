@@ -1,14 +1,24 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import "./filter.css";
 import PropTypes from "prop-types";
+import { ConfigProvider, Segmented } from "antd";
 
-const FilterResult = ({ data, open, setOpen }) => {
+const FilterResult = ({ data, open, setOpen, setFilterType, clearFilter }) => {
+  const [value, setValue] = useState("polygon");
+
   const removeOtherClickEvents = (e) => {
     e.stopPropagation();
   };
+
   return (
     <div className={`filter-result-container ${open && "open"}`}>
-      <span className="action-button" onClick={setOpen}>
+      <span
+        className="action-button"
+        onClick={() => {
+          setOpen();
+          setValue("polygon");
+        }}
+      >
         {!open ? (
           <svg
             width="24"
@@ -72,8 +82,33 @@ const FilterResult = ({ data, open, setOpen }) => {
         )}
       </span>
       <section className="result-box">
+        <div className="w100 df aic gap3 px1 filter-type">
+          <span className="px1">Filter type:</span>
+          <ConfigProvider
+            theme={{
+              components: {
+                Segmented: {
+                  trackBg: "#ccc",
+                  itemColor: "#fff",
+                  itemSelectedBg: "#f0f0f0",
+                },
+              },
+            }}
+          >
+            <Segmented
+              options={["polygon", "circle"]}
+              onChange={(value) => {
+                setFilterType(value);
+                clearFilter();
+                setValue(value);
+              }}
+              size="middle"
+              value={value}
+            />
+          </ConfigProvider>
+        </div>
         <h2>Finded polygons ({data?.length})</h2>
-        <div>
+        <div className="result-list">
           {data?.length > 0 ? (
             data?.map((point, index) => {
               return point ? (
@@ -84,7 +119,9 @@ const FilterResult = ({ data, open, setOpen }) => {
                 >
                   <h4>{point?.name}</h4>
                 </div>
-              ) : "";
+              ) : (
+                ""
+              );
             })
           ) : (
             <span style={{ margin: "auto" }}>
@@ -92,7 +129,6 @@ const FilterResult = ({ data, open, setOpen }) => {
             </span>
           )}
         </div>
-
       </section>
     </div>
   );
@@ -104,4 +140,6 @@ FilterResult.propTypes = {
   data: PropTypes.array,
   open: PropTypes.bool,
   setOpen: PropTypes.func,
+  setFilterType: PropTypes.func,
+  clearFilter: PropTypes.func,
 };

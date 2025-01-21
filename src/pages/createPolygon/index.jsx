@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { Button, Input, Modal, Space } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 import { NormalPolygon } from "./normal.polygon";
-import { RangeInput } from "../../util/range.input";
+import RangeInput from "../../util/range.input";
 import { CirclePolygon } from "./circle.polygon";
 
 export const CreatePolygon = () => {
@@ -16,6 +16,7 @@ export const CreatePolygon = () => {
   const [radius, setRadius] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [polygonName, setPolygonName] = useState("");
+  const [userLocation, setUserLocation] = useState(null);
 
   const navigate = useNavigate();
   const { id, type } = useParams();
@@ -99,11 +100,11 @@ export const CreatePolygon = () => {
   };
 
   useEffect(() => {
-    if (navigator.geolocation) {
+    setLoading(true);
+    setUserLocation(JSON.parse(sessionStorage.getItem("userLocation")));
+    setTimeout(() => {
       setLoading(false);
-    } else {
-      setLoading(false);
-    }
+    }, 10);
     getPolygon(id);
   }, [id]);
 
@@ -129,7 +130,7 @@ export const CreatePolygon = () => {
   return (
     <>
       <MapContainer
-        center={[33.58945533558725, -7.626056671142579]}
+        center={userLocation || [51.505, -0.09]}
         zoom={14}
         style={{ height: "100vh", width: "100%" }}
         doubleClickZoom={false}
@@ -157,7 +158,7 @@ export const CreatePolygon = () => {
 
         <Space className="button-group" direction="horizontal">
           {type === "circle" && (
-            <RangeInput title="Radius" value={radius} setValue={setRadius} />
+            <RangeInput title="ɵ" value={radius} setValue={setRadius} />
           )}
           {id != "new" && (
             <>

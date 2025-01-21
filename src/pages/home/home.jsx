@@ -15,10 +15,13 @@ import { useNavigate } from "react-router-dom";
 import { NewPolygonIcon } from "../../util/add.icon";
 import { FilterComponent } from "./filter";
 import FilterResult from "../filter/filter";
-import { getCircleBoundaryPoint, isClosed, isPointInPolygon } from "./featcher";
+import { filterPointsInPolygon, filterPointsWithCircle } from "./featcher";
+import { CirclePolygon } from "../createPolygon/circle.polygon";
+import RangeInput from "../../util/range.input";
 
 function App() {
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
   const [open, setOpen] = useState(false);
   const [open1, setOpen1] = useState(false);
   const [polygons, setPolygons] = useState([]);
@@ -27,6 +30,9 @@ function App() {
   const [openFilter, setOpenFilter] = useState(false);
   const [positions, setPositions] = useState([[]]);
   const [activePolygon, setActivePolygon] = useState(0);
+  const [filterType, setFilterType] = useState("polygon");
+  const [center, setCenter] = useState(null);
+  const [radius, setRadius] = useState(0);
   const navigate = useNavigate();
 
   const polygonTypes = ["polygon", "circle"].map((type) => {
@@ -46,12 +52,31 @@ function App() {
   };
 
   useEffect(() => {
+    setLoading(true);
+    fetchPolygons();
+    const u_l = sessionStorage.getItem("userLocation");
+    if (u_l) {
+      setUserLocation(JSON.parse(u_l));
+      setTimeout(() => {
+        setLoading(false);
+      }, 10);
+      return;
+    }
     if (navigator.geolocation) {
-      setLoading(false);
+      navigator.geolocation.getCurrentPosition((position) => {
+        setUserLocation([position.coords.latitude, position.coords.longitude]);
+        sessionStorage.setItem(
+          "userLocation",
+          JSON.stringify([position.coords.latitude, position.coords.longitude])
+        );
+        setTimeout(() => {
+          setLoading(false);
+        }, 10);
+      });
     } else {
+      setUserLocation([33.58945533558725, -7.626056671142579]);
       setLoading(false);
     }
-    fetchPolygons();
   }, []);
 
   if (loading) {
@@ -82,71 +107,32 @@ function App() {
       };
     });
   };
-
-  const filterPointsInPolygon = (dataPoints) => {
-    if (!positions || positions.length === 0) return [];
-
-    return dataPoints.filter((point) => {
-      try {
-        return positions.some((polygon) => {
-          if (!isClosed(polygon)) return false;
-
-          // Circle tipi noktalar için
-          if (point.type === "circle") {
-            const center = [point.center?.lat, point.center?.lng];
-            const radius = point.radius; // Circle'ın yarıçapı (metre)
-
-            // Merkezi kontrol et: Çemberin merkezi poligon içinde mi?
-            if (isPointInPolygon(center, polygon)) return true;
-
-            // Circle sınırındaki noktaları kontrol et
-            const angleStep = 10; // Sınırda 10 derecelik aralıklarla kontrol edelim
-
-            for (let angle = 0; angle < 360; angle += angleStep) {
-              const boundaryPoint = getCircleBoundaryPoint(
-                point.center.lat,
-                point.center.lng,
-                radius,
-                angle
-              );
-
-              // Sınırdaki bir nokta poligon içinde mi?
-              if (
-                isPointInPolygon(
-                  [boundaryPoint.lat, boundaryPoint.lng],
-                  polygon
-                )
-              ) {
-                return true; // Çemberin bir kısmı poligon içinde
-              }
-            }
-
-            // Eğer hiçbir sınır noktası poligon içinde değilse, false dönebiliriz
-            return false;
-          }
-
-          // Polygon tipi noktalarda
-          const points = [...(point?.positions || []), point?.center];
-          return points?.some((position) => {
-            return isPointInPolygon([position?.lat, position?.lng], polygon);
-          });
-        });
-      } catch (error) {
-        console.log("Error parsing position:", error.message || error);
-        return false;
-      }
-    });
-  };
-
   const closeFilter = () => {
     setOpenFilter(!openFilter);
     setPositions([[]]);
     setActivePolygon(0);
     setOpenedPolygons([]);
     setOpenedCircle([]);
+    setCenter(null);
+    setRadius(0);
+    setFilterType("polygon");
   };
 
-  const result = openFilter ? filterPointsInPolygon(polygons) : [];
+  const clearFilter = () => {
+    setPositions([[]]);
+    setActivePolygon(0);
+    setOpenedPolygons([]);
+    setOpenedCircle([]);
+    setCenter(null);
+    setRadius(0);
+  };
+
+  const result = openFilter
+    ? filterType === "polygon"
+      ? filterPointsInPolygon(polygons)
+      : filterPointsWithCircle(polygons, center, radius)
+    : [];
+
   const getPolygonPoints = () => {
     let points = [];
     let circle = [];
@@ -166,84 +152,103 @@ function App() {
     setOpenedCircle(circle);
   };
   return (
-    <>
-      <MapContainer
-        center={[33.58945533558725, -7.626056671142579]}
-        zoom={14}
-        style={{ height: "100vh", width: "100%" }}
-        doubleClickZoom={false}
-      >
-        <Button
-          className={`show-polygon-points ${openFilter ? "open" : ""} ${
-            result?.length === 0 && "disabled"
-          }`}
-          type="primary"
-          onClick={getPolygonPoints}
+    loading === false && (
+      <>
+        <MapContainer
+          center={userLocation}
+          zoom={14}
+          style={{ height: "100vh", width: "100%" }}
+          doubleClickZoom={false}
         >
-          Points
-        </Button>
-        <FilterResult
-          data={result}
-          open={openFilter}
-          setOpen={() => closeFilter()}
-        />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {openFilter && (
-          <FilterComponent
-            positions={positions}
-            setActivePolygon={setActivePolygon}
-            setPositions={setPositions}
-            setOpen={setOpen}
-            activePolygon={activePolygon}
-            closeFilter={closeFilter}
-            openFilter={openFilter}
-            result={result}
-            setOpenedPolygon={setOpenedPolygons}
-            setOpenedCircle={setOpenedCircle}
+          <Button
+            className={`show-polygon-points ${openFilter ? "open" : ""} ${
+              result?.length === 0 && "disabled"
+            }`}
+            type="primary"
+            onClick={getPolygonPoints}
+          >
+            Points
+          </Button>
+          <FilterResult
+            data={result}
+            open={openFilter}
+            setOpen={() => closeFilter()}
+            setFilterType={setFilterType}
+            clearFilter={clearFilter}
           />
-        )}
-        {openedPolygon?.map((polygon, polygonIndex) => (
-          <Polyline
-            key={polygonIndex}
-            positions={polygon || []}
-            color={polygons?.[polygonIndex]?.color}
+          {filterType === "circle" && (
+            <RangeInput
+              title="ɵ"
+              value={radius}
+              setValue={setRadius}
+              main={true}
+            />
+          )}
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-        ))}
-
-        {openedCircle?.map((circle, circleIndex) => (
-          <Circle
-            key={circleIndex}
-            center={circle?.center}
-            radius={circle?.radius}
-            color={circle?.color}
-          />
-        ))}
-
-        {openedPolygon?.map((item, polygonIndex) => {
-          return item?.map((position, index) => {
-            const m_icon = L.divIcon({
-              className: "custom-point-icon",
-              html: `<span style="background: ${polygons?.[polygonIndex]?.color}; width: 11px; height: 11px; border-radius: 50%; display: inline-block;"></span>`,
-              iconAnchor: [5, 8],
-            });
-            return (
-              <Marker
-                key={`${polygonIndex}-marker-${index}`}
-                position={position || []}
-                icon={m_icon}
+          {openFilter &&
+            (filterType === "polygon" ? (
+              <FilterComponent
+                positions={positions}
+                setActivePolygon={setActivePolygon}
+                setPositions={setPositions}
+                setOpen={setOpen}
+                activePolygon={activePolygon}
+                closeFilter={closeFilter}
+                openFilter={openFilter}
+                result={result}
+                setOpenedPolygon={setOpenedPolygons}
+                setOpenedCircle={setOpenedCircle}
               />
-            );
-          });
-        })}
+            ) : (
+              <CirclePolygon
+                center={center}
+                setCenter={setCenter}
+                radius={radius}
+                setRadius={setRadius}
+              />
+            ))}
+          {openedPolygon?.map((polygon, polygonIndex) => (
+            <Polyline
+              key={polygonIndex}
+              positions={polygon || []}
+              color={polygons?.[polygonIndex]?.color}
+            />
+          ))}
 
-        {result?.map((polygon, index) => {
-          const customIcon = L.divIcon({
-            className: "custom-badge-icon",
-            iconAnchor: [17, 10],
-            html: `
+          {openedCircle?.map((circle, circleIndex) => (
+            <Circle
+              key={circleIndex}
+              center={circle?.center}
+              radius={circle?.radius}
+              color={circle?.color}
+            />
+          ))}
+
+          {openedPolygon?.map((item, polygonIndex) => {
+            return item?.map((position, index) => {
+              const m_icon = L.divIcon({
+                className: "custom-point-icon",
+                html: `<span style="background: ${polygons?.[polygonIndex]?.color}; width: 11px; height: 11px; border-radius: 50%; display: inline-block;"></span>`,
+                iconAnchor: [5, 8],
+              });
+              return (
+                <Marker
+                  key={`${polygonIndex}-marker-${index}`}
+                  position={position || []}
+                  icon={m_icon}
+                />
+              );
+            });
+          })}
+
+          {result?.map((polygon, index) => {
+            const customIcon = L.divIcon({
+              className: "custom-badge-icon",
+              iconAnchor: [17, 10],
+              html: `
       <div style="text-align: center;">
         <div style="border-radius: 15px; padding: 0px 8px;">
           ${polygon.name}
@@ -251,81 +256,82 @@ function App() {
         <img src="https://cdn-icons-png.flaticon.com/512/12727/12727781.png" alt="icon" style="width: 34px; height: 34px;" />
       </div>
     `,
-          });
+            });
 
-          return (
-            <Marker
-              key={`polygon-${index}`}
-              position={polygon?.center || null}
-              icon={customIcon}
-            >
-              <Popup minWidth={110}>
-                <p style={{ minWidth: "120px" }}>Polygon: {polygon?.name}</p>
-                <p className="polygon-color">
-                  Color: <span style={{ background: polygon?.color }}></span>
-                </p>
-                <details style={{ width: "100%" }}>
-                  <summary>polygon coordinates</summary>
-                  {polygon.type !== "circle" ? (
-                    polygon?.positions?.map((position, positionIndex) => (
-                      <div key={positionIndex}>
+            return (
+              <Marker
+                key={`polygon-${index}`}
+                position={polygon?.center || null}
+                icon={customIcon}
+              >
+                <Popup minWidth={110}>
+                  <p style={{ minWidth: "120px" }}>Polygon: {polygon?.name}</p>
+                  <p className="polygon-color">
+                    Color: <span style={{ background: polygon?.color }}></span>
+                  </p>
+                  <details style={{ width: "100%" }}>
+                    <summary>polygon coordinates</summary>
+                    {polygon.type !== "circle" ? (
+                      polygon?.positions?.map((position, positionIndex) => (
+                        <div key={positionIndex}>
+                          <p style={{ inlineSize: "100%" }}>
+                            {positionIndex + 1}:{" "}
+                            {[`${position?.lat}, ${position?.lng}`]}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <>
                         <p style={{ inlineSize: "100%" }}>
-                          {positionIndex + 1}:{" "}
-                          {[`${position?.lat}, ${position?.lng}`]}
+                          Center coordinates: <br />
+                          {[`${polygon.center?.lat}, ${polygon.center?.lng}`]}
                         </p>
-                      </div>
-                    ))
-                  ) : (
-                    <>
-                      <p style={{ inlineSize: "100%" }}>
-                        Center coordinates: <br />
-                        {[`${polygon.center?.lat}, ${polygon.center?.lng}`]}
-                      </p>
-                      <p style={{ inlineSize: "100%" }}>
-                        Radius: {polygon.radius}m
-                      </p>
-                    </>
-                  )}
-                </details>
-              </Popup>
-            </Marker>
-          );
-        })}
+                        <p style={{ inlineSize: "100%" }}>
+                          Radius: {polygon.radius}m
+                        </p>
+                      </>
+                    )}
+                  </details>
+                </Popup>
+              </Marker>
+            );
+          })}
 
-        <Space className="button-group" direction="horizontal">
-          <Dropdown
-            menu={{ items: getPolygons() }}
-            placement="bottomRight"
-            trigger={["click"]}
-            onOpenChange={handleOpenChange}
-            open={open}
-          >
-            <Button
-              className="my_polygons"
-              type="default"
-              onClick={(e) => e.stopPropagation()}
+          <Space className="button-group" direction="horizontal">
+            <Dropdown
+              menu={{ items: getPolygons() }}
+              placement="bottomRight"
+              trigger={["click"]}
+              onOpenChange={handleOpenChange}
+              open={open}
             >
-              Polygons
-            </Button>
-          </Dropdown>
-          <Dropdown
-            menu={{ items: polygonTypes }}
-            placement="bottomRight"
-            trigger={["click"]}
-            onOpenChange={handleOpenChange1}
-            open={open1}
-          >
-            <Button
-              className="my_polygons"
-              type="default"
-              onClick={(e) => e.stopPropagation()}
+              <Button
+                className="my_polygons"
+                type="default"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Polygons
+              </Button>
+            </Dropdown>
+            <Dropdown
+              menu={{ items: polygonTypes }}
+              placement="bottomRight"
+              trigger={["click"]}
+              onOpenChange={handleOpenChange1}
+              open={open1}
             >
-              New Polygon <NewPolygonIcon />
-            </Button>
-          </Dropdown>
-        </Space>
-      </MapContainer>
-    </>
+              <Button
+                className="my_polygons"
+                type="default"
+                onClick={(e) => e.stopPropagation()}
+              >
+                New Polygon <NewPolygonIcon />
+              </Button>
+            </Dropdown>
+          </Space>
+        </MapContainer>
+      </>
+    )
   );
 }
 

@@ -1,50 +1,56 @@
 import PropTypes from "prop-types";
+import { memo, useState } from "react";
 
-export const RangeInput = ({ title, value, setValue }) => {
+const RangeInput = ({ title, value, setValue, main = false }) => {
+  const [maxValue, setMaxValue] = useState(100000); // 6371000
   const handleInputChange = (e) => {
     e.stopPropagation();
-    setValue(Number(e.target.value));
-  };
-
-  const incrementValue = () => {
-    if (value < 5000) {
-      setValue((prev) => prev + 1);
+    const value = Number(e.target.value);
+    if (value > 90000) {
+      setMaxValue(600000);
     }
-  };
-
-  const decrementValue = () => {
-    if (value > 0) {
-      setValue((prev) => prev - 1);
+    if (value > 500000) {
+      setMaxValue(1000000);
     }
+    if (value > 900000) {
+      setMaxValue(2000000);
+    }
+    if (value > 1900000) {
+      setMaxValue(4000000);
+    }
+    if (value > 3900000) {
+      setMaxValue(6371000);
+    }
+    setValue(value);
   };
 
   return (
-    <section className="df aic gap3 range-slider">
-      <span className="fs2 fw3 range-slider__title">{title}</span>
+    <section className={`df aic gap3 range-slider ${main ? "main" : ""}`}>
+      <span className="fw3 range-slider__title">{title}</span>
       <input
         className="range-slider__range"
         type="range"
         name="range"
-        max={6371000}
+        max={maxValue}
         min={0}
         value={value}
         onChange={handleInputChange}
       />
-      <span className="fs2 range-slider__value">{value}</span>
-      <div className="df fdc aic counter">
-        <i className="cp counter-plus" onClick={incrementValue}>
-          ▲
-        </i>
-        <i className="cp counter-minus" onClick={decrementValue}>
-          ▼
-        </i>
-      </div>
+      <input
+        type="text"
+        className="range-slider__input"
+        value={value}
+        onChange={handleInputChange}
+      />
     </section>
   );
 };
+
+export default memo(RangeInput);
 
 RangeInput.propTypes = {
   title: PropTypes.string.isRequired,
   value: PropTypes.number,
   setValue: PropTypes.func,
+  main: PropTypes.bool,
 };
