@@ -107,6 +107,7 @@ function App() {
         onClick: () => {
           navigate(`/polygon/${index}/${polygon?.type || "polygon"}`);
           setOpen(false);
+          localStorage.setItem("userLocation", JSON.stringify([polygon.center.lat, polygon.center.lng]));
         },
       };
     });
