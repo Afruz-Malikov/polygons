@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "../home/app.css";
 import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -7,6 +7,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { NormalPolygon } from "./normal.polygon";
 import RangeInput from "../../util/range.input";
 import { CirclePolygon } from "./circle.polygon";
+import { handleGetCenter } from "../../util/service";
 
 export const CreatePolygon = () => {
   const [loading, setLoading] = useState(true);
@@ -17,6 +18,7 @@ export const CreatePolygon = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [polygonName, setPolygonName] = useState("");
   const [userLocation, setUserLocation] = useState(null);
+  const mapRef = useRef(null);
 
   const navigate = useNavigate();
   const { id, type } = useParams();
@@ -71,6 +73,7 @@ export const CreatePolygon = () => {
     localStorage.setItem("polygons", JSON.stringify(newPositions));
     alert("Polygons saved successfully!");
     setIsModalOpen(false);
+    handleGetCenter(mapRef);
     navigate("/");
   };
 
@@ -80,8 +83,8 @@ export const CreatePolygon = () => {
   };
 
   const getPolygon = (id) => {
-    const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
     if (id != "new") {
+      const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
       const polygon = polygons[id];
       if (polygon) {
         setPolygonName(polygon.name);
@@ -101,7 +104,7 @@ export const CreatePolygon = () => {
 
   useEffect(() => {
     setLoading(true);
-    setUserLocation(JSON.parse(sessionStorage.getItem("userLocation")));
+    setUserLocation(JSON.parse(localStorage.getItem("userLocation")));
     setTimeout(() => {
       setLoading(false);
     }, 10);
@@ -117,14 +120,15 @@ export const CreatePolygon = () => {
   };
 
   const deletePolygon = () => {
-    const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
     if (id != "new") {
+      const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
       polygons.splice(id, 1);
       localStorage.setItem("polygons", JSON.stringify(polygons));
       alert("Polygon deleted successfully!");
       setIsModalOpen(false);
       navigate("/");
     }
+    handleGetCenter(mapRef);
   };
 
   return (
@@ -134,6 +138,7 @@ export const CreatePolygon = () => {
         zoom={14}
         style={{ height: "100vh", width: "100%" }}
         doubleClickZoom={false}
+        ref={mapRef}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -179,7 +184,10 @@ export const CreatePolygon = () => {
           )}
           <Button
             type="default"
-            onClick={() => navigate("/")}
+            onClick={() => {
+              navigate("/");
+              handleGetCenter(mapRef);
+            }}
             className="save-polygon"
           >
             ×

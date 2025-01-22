@@ -8,3 +8,14 @@ export const generateDarkHexColor = () => {
 
     return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
 };
+
+export const handleGetCenter = (mapRef) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const center = map.getCenter();
+    localStorage.setItem(
+        "userLocation",
+        JSON.stringify([center.lat, center.lng])
+    );
+};

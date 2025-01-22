@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./app.css";
 import {
   MapContainer,
@@ -18,6 +18,7 @@ import FilterResult from "../filter/filter";
 import { filterPointsInPolygon, filterPointsWithCircle } from "./featcher";
 import { CirclePolygon } from "../createPolygon/circle.polygon";
 import RangeInput from "../../util/range.input";
+import { handleGetCenter } from "../../util/service";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -34,6 +35,7 @@ function App() {
   const [center, setCenter] = useState(null);
   const [radius, setRadius] = useState(0);
   const navigate = useNavigate();
+  const mapRef = useRef();
 
   const polygonTypes = ["polygon", "circle"].map((type) => {
     return {
@@ -54,7 +56,7 @@ function App() {
   useEffect(() => {
     setLoading(true);
     fetchPolygons();
-    const u_l = sessionStorage.getItem("userLocation");
+    const u_l = localStorage.getItem("userLocation");
     if (u_l) {
       setUserLocation(JSON.parse(u_l));
       setTimeout(() => {
@@ -65,7 +67,7 @@ function App() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
         setUserLocation([position.coords.latitude, position.coords.longitude]);
-        sessionStorage.setItem(
+        localStorage.setItem(
           "userLocation",
           JSON.stringify([position.coords.latitude, position.coords.longitude])
         );
@@ -86,12 +88,14 @@ function App() {
   const handleOpenChange = (nextOpen, info) => {
     if (info.source === "trigger" || nextOpen) {
       setOpen(nextOpen);
+      handleGetCenter(mapRef);
     }
   };
 
   const handleOpenChange1 = (nextOpen, info) => {
     if (info.source === "trigger" || nextOpen) {
       setOpen1(nextOpen);
+      handleGetCenter(mapRef);
     }
   };
 
@@ -116,6 +120,7 @@ function App() {
     setCenter(null);
     setRadius(0);
     setFilterType("polygon");
+    handleGetCenter(mapRef);
   };
 
   const clearFilter = () => {
@@ -125,6 +130,7 @@ function App() {
     setOpenedCircle([]);
     setCenter(null);
     setRadius(0);
+    handleGetCenter(mapRef);
   };
 
   const result = openFilter
@@ -159,6 +165,7 @@ function App() {
           zoom={14}
           style={{ height: "100vh", width: "100%" }}
           doubleClickZoom={false}
+          ref={mapRef}
         >
           <Button
             className={`show-polygon-points ${openFilter ? "open" : ""} ${

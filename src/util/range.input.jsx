@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { memo, useState } from "react";
+import { useMap } from "react-leaflet";
 
 const RangeInput = ({ title, value, setValue, main = false }) => {
   const [maxValue, setMaxValue] = useState(100000); // 6371000
@@ -53,4 +54,32 @@ RangeInput.propTypes = {
   value: PropTypes.number,
   setValue: PropTypes.func,
   main: PropTypes.bool,
+};
+
+export const GetMapCenterButton = () => {
+  const map = useMap();
+
+  const handleGetCenter = () => {
+    const center = map.getCenter();
+    console.log("Haritanın Merkezi:", center);
+  };
+
+  return (
+    <button
+      onClick={handleGetCenter}
+      style={{
+        position: "absolute",
+        top: 10,
+        left: 10,
+        zIndex: 1000,
+        backgroundColor: "white",
+        padding: "10px",
+        borderRadius: "5px",
+        border: "none",
+        boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.2)",
+      }}
+    >
+      Harita Merkezini Al
+    </button>
+  );
 };
