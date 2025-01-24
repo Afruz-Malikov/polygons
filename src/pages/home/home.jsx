@@ -183,6 +183,7 @@ function App() {
           >
             Points
           </Button>
+          <small className="zoom-value">{zoomLevel}</small>
           <FilterResult
             data={result}
             open={openFilter}

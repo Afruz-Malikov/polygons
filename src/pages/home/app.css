@@ -80,6 +80,20 @@
   border-color: #666;
 }
 
+.zoom-value {
+  position: fixed;
+  top: 80px;
+  left: 10px;
+  z-index: 9999;
+  background: #fff;
+  padding: 5px 0;
+  text-align: center;
+  width: 33px; 
+  border-radius: 5px;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+}
+
 @media (max-width: 500px) {
   .my_polygons,
   .save-polygon {
