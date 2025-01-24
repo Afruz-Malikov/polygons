@@ -10,9 +10,15 @@ const m_icon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-export const CirclePolygon = ({ setCenter, center, radius = 0, setRadius }) => {
+export const CirclePolygon = ({
+  setCenter,
+  center,
+  radius = 0,
+  setRadius,
+  setZoomLevel,
+}) => {
   const MapClickHandler = () => {
-    useMapEvents({
+    const map = useMapEvents({
       click(e) {
         const clickedElement = e.originalEvent.target;
         if (
@@ -33,6 +39,11 @@ export const CirclePolygon = ({ setCenter, center, radius = 0, setRadius }) => {
         if (draggedElement && draggedElement.closest("div")) {
           this.dragging.enable();
         }
+      },
+      zoomend: () => {
+        const currentZoom = map.getZoom();
+        setZoomLevel(currentZoom);
+        console.log("Zoom Level:", currentZoom);
       },
     });
     return null;
@@ -71,4 +82,5 @@ CirclePolygon.propTypes = {
   center: PropTypes.object,
   radius: PropTypes.number,
   setRadius: PropTypes.func,
+  setZoomLevel: PropTypes.func,
 };

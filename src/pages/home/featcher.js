@@ -76,17 +76,11 @@ export const filterPointsInPolygon = (dataPoints, positions) => {
         try {
             return positions.some((polygon) => {
                 if (!isClosed(polygon)) return false;
-
-                // Circle tipi noktalar için
                 if (point.type === "circle") {
                     const center = [point.center?.lat, point.center?.lng];
                     const radius = point.radius; // Circle'ın yarıçapı (metre)
-
-                    // Merkezi kontrol et: Çemberin merkezi poligon içinde mi?
                     if (isPointInPolygon(center, polygon)) return true;
-
-                    // Circle sınırındaki noktaları kontrol et
-                    const angleStep = 10; // Sınırda 10 derecelik aralıklarla kontrol edelim
+                    const angleStep = 10;
 
                     for (let angle = 0; angle < 360; angle += angleStep) {
                         const boundaryPoint = getCircleBoundaryPoint(
@@ -95,8 +89,6 @@ export const filterPointsInPolygon = (dataPoints, positions) => {
                             radius,
                             angle
                         );
-
-                        // Sınırdaki bir nokta poligon içinde mi?
                         if (
                             isPointInPolygon(
                                 [boundaryPoint.lat, boundaryPoint.lng],
@@ -106,12 +98,9 @@ export const filterPointsInPolygon = (dataPoints, positions) => {
                             return true; // Çemberin bir kısmı poligon içinde
                         }
                     }
-
-                    // Eğer hiçbir sınır noktası poligon içinde değilse, false dönebiliriz
                     return false;
                 }
 
-                // Polygon tipi noktalarda
                 const points = [...(point?.positions || []), point?.center];
                 return points?.some((position) => {
                     return isPointInPolygon([position?.lat, position?.lng], polygon);

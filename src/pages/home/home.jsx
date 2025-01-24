@@ -9,6 +9,7 @@ import {
   Circle,
 } from "react-leaflet";
 import L from "leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet/dist/leaflet.css";
 import { Button, Dropdown, Space } from "antd";
 import { useNavigate } from "react-router-dom";
@@ -34,6 +35,7 @@ function App() {
   const [filterType, setFilterType] = useState("polygon");
   const [center, setCenter] = useState(null);
   const [radius, setRadius] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(14);
   const navigate = useNavigate();
   const mapRef = useRef();
 
@@ -107,7 +109,10 @@ function App() {
         onClick: () => {
           navigate(`/polygon/${index}/${polygon?.type || "polygon"}`);
           setOpen(false);
-          localStorage.setItem("userLocation", JSON.stringify([polygon?.center?.lat, polygon?.center?.lng]));
+          localStorage.setItem(
+            "userLocation",
+            JSON.stringify([polygon?.center?.lat, polygon?.center?.lng])
+          );
         },
       };
     });
@@ -136,7 +141,7 @@ function App() {
 
   const result = openFilter
     ? filterType === "polygon"
-      ? filterPointsInPolygon(polygons)
+      ? filterPointsInPolygon(polygons, positions)
       : filterPointsWithCircle(polygons, center, radius)
     : [];
 
@@ -163,7 +168,8 @@ function App() {
       <>
         <MapContainer
           center={userLocation}
-          zoom={14}
+          zoom={filterType === "polygon" ? 14 : zoomLevel}
+          minZoom={3}
           style={{ height: "100vh", width: "100%" }}
           doubleClickZoom={false}
           ref={mapRef}
@@ -186,10 +192,10 @@ function App() {
           />
           {filterType === "circle" && (
             <RangeInput
-              title="ɵ"
               value={radius}
               setValue={setRadius}
               main={true}
+              zoomLevel={zoomLevel}
             />
           )}
           <TileLayer
@@ -216,6 +222,7 @@ function App() {
                 setCenter={setCenter}
                 radius={radius}
                 setRadius={setRadius}
+                setZoomLevel={setZoomLevel}
               />
             ))}
           {openedPolygon?.map((polygon, polygonIndex) => (
@@ -252,11 +259,12 @@ function App() {
             });
           })}
 
-          {result?.map((polygon, index) => {
-            const customIcon = L.divIcon({
-              className: "custom-badge-icon",
-              iconAnchor: [17, 10],
-              html: `
+          <MarkerClusterGroup chunkedLoading>
+            {result?.map((polygon, index) => {
+              const customIcon = L.divIcon({
+                className: "custom-badge-icon",
+                iconAnchor: [17, 10],
+                html: `
       <div style="text-align: center;">
         <div style="border-radius: 15px; padding: 0px 8px;">
           ${polygon.name}
@@ -264,46 +272,50 @@ function App() {
         <img src="https://cdn-icons-png.flaticon.com/512/12727/12727781.png" alt="icon" style="width: 34px; height: 34px;" />
       </div>
     `,
-            });
+              });
 
-            return (
-              <Marker
-                key={`polygon-${index}`}
-                position={polygon?.center || null}
-                icon={customIcon}
-              >
-                <Popup minWidth={110}>
-                  <p style={{ minWidth: "120px" }}>Polygon: {polygon?.name}</p>
-                  <p className="polygon-color">
-                    Color: <span style={{ background: polygon?.color }}></span>
-                  </p>
-                  <details style={{ width: "100%" }}>
-                    <summary>polygon coordinates</summary>
-                    {polygon.type !== "circle" ? (
-                      polygon?.positions?.map((position, positionIndex) => (
-                        <div key={positionIndex}>
+              return (
+                <Marker
+                  key={`polygon-${index}`}
+                  position={polygon?.center || null}
+                  icon={customIcon}
+                >
+                  <Popup minWidth={110}>
+                    <p style={{ minWidth: "120px" }}>
+                      Polygon: {polygon?.name}
+                    </p>
+                    <p className="polygon-color">
+                      Color:{" "}
+                      <span style={{ background: polygon?.color }}></span>
+                    </p>
+                    <details style={{ width: "100%" }}>
+                      <summary>polygon coordinates</summary>
+                      {polygon.type !== "circle" ? (
+                        polygon?.positions?.map((position, positionIndex) => (
+                          <div key={positionIndex}>
+                            <p style={{ inlineSize: "100%" }}>
+                              {positionIndex + 1}:{" "}
+                              {[`${position?.lat}, ${position?.lng}`]}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <>
                           <p style={{ inlineSize: "100%" }}>
-                            {positionIndex + 1}:{" "}
-                            {[`${position?.lat}, ${position?.lng}`]}
+                            Center coordinates: <br />
+                            {[`${polygon.center?.lat}, ${polygon.center?.lng}`]}
                           </p>
-                        </div>
-                      ))
-                    ) : (
-                      <>
-                        <p style={{ inlineSize: "100%" }}>
-                          Center coordinates: <br />
-                          {[`${polygon.center?.lat}, ${polygon.center?.lng}`]}
-                        </p>
-                        <p style={{ inlineSize: "100%" }}>
-                          Radius: {polygon.radius}m
-                        </p>
-                      </>
-                    )}
-                  </details>
-                </Popup>
-              </Marker>
-            );
-          })}
+                          <p style={{ inlineSize: "100%" }}>
+                            Radius: {polygon.radius}m
+                          </p>
+                        </>
+                      )}
+                    </details>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MarkerClusterGroup>
 
           <Space className="button-group" direction="horizontal">
             <Dropdown

@@ -128,7 +128,7 @@
 }
 
 .range-slider__title {
-  font-size: 30px;
+  font-size: 20px;
   color: #555;
   padding-bottom: 5px;
 }
@@ -144,7 +144,7 @@
 .range-slider__input {
   color: #000000cc;
   font-size: 16px;
-  width: 80px;
+  max-width: 80px;
   height: 60%;
   text-align: center;
   border: 1px solid #0003;

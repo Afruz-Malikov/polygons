@@ -1,33 +1,36 @@
 import PropTypes from "prop-types";
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import { useMap } from "react-leaflet";
 
-const RangeInput = ({ title, value, setValue, main = false }) => {
-  const [maxValue, setMaxValue] = useState(100000); // 6371000
+const RangeInput = ({ value, setValue, main = false, zoomLevel }) => {
+  const [maxValue, setMaxValue] = useState(200);
   const handleInputChange = (e) => {
     e.stopPropagation();
-    const value = Number(e.target.value);
-    if (value > 90000) {
-      setMaxValue(600000);
-    }
-    if (value > 500000) {
-      setMaxValue(1000000);
-    }
-    if (value > 900000) {
-      setMaxValue(2000000);
-    }
-    if (value > 1900000) {
-      setMaxValue(4000000);
-    }
-    if (value > 3900000) {
-      setMaxValue(6371000);
-    }
-    setValue(value);
+    setValue(Number(e.target.value));
   };
+
+  useEffect(() => {
+    const calculateMaxValue = (zoom) => {
+      if (zoom >= 17) return 200;
+      if (zoom >= 14) return 10000;
+      const maxRadius = 4000000;
+      const minRadius = 200;
+      const normalizedZoom = (zoom - 3) / (13 - 3);
+      const max = maxRadius - normalizedZoom * (maxRadius - minRadius);
+      return Math.round(max);
+    };
+
+    setMaxValue(calculateMaxValue(zoomLevel));
+  }, [zoomLevel]);
 
   return (
     <section className={`df aic gap3 range-slider ${main ? "main" : ""}`}>
-      <span className="fw3 range-slider__title">{title}</span>
+      <input
+        type="text"
+        className="range-slider__input"
+        value={value}
+        onChange={handleInputChange}
+      />
       <input
         className="range-slider__range"
         type="range"
@@ -37,12 +40,7 @@ const RangeInput = ({ title, value, setValue, main = false }) => {
         value={value}
         onChange={handleInputChange}
       />
-      <input
-        type="text"
-        className="range-slider__input"
-        value={value}
-        onChange={handleInputChange}
-      />
+      <span className="fw3 range-slider__title">{maxValue}</span>
     </section>
   );
 };
@@ -50,10 +48,10 @@ const RangeInput = ({ title, value, setValue, main = false }) => {
 export default memo(RangeInput);
 
 RangeInput.propTypes = {
-  title: PropTypes.string.isRequired,
   value: PropTypes.number,
   setValue: PropTypes.func,
   main: PropTypes.bool,
+  zoomLevel: PropTypes.number,
 };
 
 export const GetMapCenterButton = () => {
