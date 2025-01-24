@@ -11,11 +11,9 @@ const RangeInput = ({ value, setValue, main = false, zoomLevel }) => {
 
   useEffect(() => {
     const calculateMaxValue = (zoom) => {
-      if (zoom >= 17) return 200;
-      if (zoom >= 13) return 10000;
       const maxRadius = 4000000;
-      const minRadius = 10000;
-      const normalizedZoom = (zoom - 3) / (13 - 3);
+      const minRadius = 200;
+      const normalizedZoom = (zoom - 3) / (18 - 3);
       const max = maxRadius - normalizedZoom * (maxRadius - minRadius);
       return Math.round(max);
     };
