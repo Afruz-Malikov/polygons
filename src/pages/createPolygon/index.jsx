@@ -170,6 +170,7 @@ export const CreatePolygon = () => {
               value={radius}
               setValue={setRadius}
               zoomLevel={zoomLevel}
+              center={center}
             />
           )}
           {id != "new" && (

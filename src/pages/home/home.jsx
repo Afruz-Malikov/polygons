@@ -76,6 +76,9 @@ function App() {
         setTimeout(() => {
           setLoading(false);
         }, 10);
+      }, () => {
+        setUserLocation([33.58945533558725, -7.626056671142579]);
+        setLoading(false);
       });
     } else {
       setUserLocation([33.58945533558725, -7.626056671142579]);
@@ -197,6 +200,7 @@ function App() {
               setValue={setRadius}
               main={true}
               zoomLevel={zoomLevel}
+              center={center}
             />
           )}
           <TileLayer

@@ -2,24 +2,30 @@ import PropTypes from "prop-types";
 import { memo, useState, useEffect } from "react";
 import { useMap } from "react-leaflet";
 
-const RangeInput = ({ value, setValue, main = false, zoomLevel }) => {
-  const [maxValue, setMaxValue] = useState(200);
+const RangeInput = ({ value, setValue, main = false, center }) => {
+  const [viewportWidth, viewportHeight] = useViewportSize();
+  const maxRadius = useMaxMetersInDevice(viewportHeight, viewportWidth, center);
+  
+  useEffect(() => {
+    if (value > maxRadius) setValue(maxRadius);
+  },[value, maxRadius]);
+
   const handleInputChange = (e) => {
     e.stopPropagation();
     setValue(Number(e.target.value));
   };
 
-  useEffect(() => {
-    const calculateMaxValue = (zoom) => {
-      const maxRadius = 4000000;
-      const minRadius = 200;
-      const normalizedZoom = (zoom - 3) / (18 - 3);
-      const max = maxRadius - normalizedZoom * (maxRadius - minRadius);
-      return Math.round(max);
-    };
+  // useEffect(() => {
+  //   const calculateMaxValue = (zoom) => {
+  //     const maxRadius = 4000000;
+  //     const minRadius = 200;
+  //     const normalizedZoom = (zoom - 3) / (18 - 3);
+  //     const max = maxRadius - normalizedZoom * (maxRadius - minRadius);
+  //     return Math.round(max);
+  //   };
 
-    setMaxValue(calculateMaxValue(zoomLevel));
-  }, [zoomLevel]);
+  //   setMaxValue(calculateMaxValue(zoomLevel));
+  // }, [zoomLevel]);
 
   return (
     <section className={`df aic gap3 range-slider ${main ? "main" : ""}`}>
@@ -33,12 +39,12 @@ const RangeInput = ({ value, setValue, main = false, zoomLevel }) => {
         className="range-slider__range"
         type="range"
         name="range"
-        max={maxValue}
+        max={maxRadius}
         min={0}
         value={value}
         onChange={handleInputChange}
       />
-      <span className="fw3 range-slider__title">{maxValue}</span>
+      <span className="fw3 range-slider__title">{maxRadius}</span>
     </section>
   );
 };
@@ -79,3 +85,54 @@ export const GetMapCenterButton = () => {
     </button>
   );
 };
+
+
+const useMaxMetersInDevice = (viewportHeight, viewportWidth, center) => {
+  const map = useMap();
+  const [maxRadiusInDevice, setMaxRadiusInDevice] = useState(0);
+
+  useEffect(() => {
+    const maxRadiusInDevice = () => {
+      if (!map) return 0;
+     
+      const pointOfCenterViewport = map.containerPointToLatLng([viewportWidth/2, viewportHeight/2]);
+      const newPoint = map.containerPointToLatLng([viewportWidth/2, viewportHeight/2+100]);
+  
+      const metersIn100Px = pointOfCenterViewport.distanceTo(newPoint);
+      
+      const radiusInMeters = Math.round(Math.max(viewportWidth*metersIn100Px/200, viewportHeight*metersIn100Px/200));
+  
+      return radiusInMeters;
+    };
+
+    setMaxRadiusInDevice(maxRadiusInDevice());
+    
+  }, [viewportHeight, viewportWidth, map._zoom, center]);
+  
+
+  return maxRadiusInDevice;
+};
+
+
+const useViewportSize = () => {
+  const [viewportSize, setViewportSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+    console.log(window.innerWidth, window.innerHeight);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  return [viewportSize.width, viewportSize.height];
+}
