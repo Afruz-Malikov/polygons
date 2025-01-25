@@ -5,10 +5,11 @@ import { useMap } from "react-leaflet";
 const RangeInput = ({ value, setValue, main = false, center }) => {
   const [viewportWidth, viewportHeight] = useViewportSize();
   const maxRadius = useMaxMetersInDevice(viewportHeight, viewportWidth, center);
+  const [inputMaxValue, setInputMaxValue] = useState(()=> Math.max(value, maxRadius));
   
   useEffect(() => {
-    if (value > maxRadius) setValue(maxRadius);
-  },[value, maxRadius]);
+    setInputMaxValue(Math.max(value, maxRadius));
+  },[maxRadius]);
 
   const handleInputChange = (e) => {
     e.stopPropagation();
@@ -39,12 +40,13 @@ const RangeInput = ({ value, setValue, main = false, center }) => {
         className="range-slider__range"
         type="range"
         name="range"
-        max={maxRadius}
-        min={0}
+        max={inputMaxValue}
+        min={200}
         value={value}
         onChange={handleInputChange}
+        onPointerUp={()=> {setInputMaxValue(Math.max(value, maxRadius))}}
       />
-      <span className="fw3 range-slider__title">{maxRadius}</span>
+      <span className="fw3 range-slider__title">{inputMaxValue}</span>
     </section>
   );
 };
