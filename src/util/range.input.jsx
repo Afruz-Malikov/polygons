@@ -41,7 +41,7 @@ const RangeInput = ({ value, setValue, main = false, center }) => {
         type="range"
         name="range"
         max={inputMaxValue}
-        min={200}
+        min={0}
         value={value}
         onChange={handleInputChange}
         onPointerUp={()=> {setInputMaxValue(Math.max(value, maxRadius))}}
