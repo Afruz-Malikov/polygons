@@ -70,16 +70,6 @@ export const CreatePolygon = () => {
         radius,
         color,
       });
-      polygonToSave = {
-        name: polygonName,
-        positions: positions[0],
-        center:
-          type === 'circle' ? center : calculatePolygonCentroid(positions[0]),
-        type: type === 'circle' ? 'circle' : 'polygon',
-        radius,
-        color,
-      };
-      newPositions.push(polygonToSave);
     }
     localStorage.setItem('polygons', JSON.stringify(newPositions));
     alert('Polygons saved successfully!');
