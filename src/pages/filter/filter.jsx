@@ -1,22 +1,22 @@
-import { memo, useState } from "react";
-import "./filter.css";
-import PropTypes from "prop-types";
-import { ConfigProvider, Segmented } from "antd";
+import { memo, useState } from 'react';
+import './filter.css';
+import PropTypes from 'prop-types';
+import { ConfigProvider, Segmented } from 'antd';
 
 const FilterResult = ({ data, open, setOpen, setFilterType, clearFilter }) => {
-  const [value, setValue] = useState("polygon");
+  const [value, setValue] = useState('polygon');
 
   const removeOtherClickEvents = (e) => {
     e.stopPropagation();
   };
 
   return (
-    <div className={`filter-result-container ${open && "open"}`}>
+    <div className={`filter-result-container ${open && 'open'}`}>
       <span
         className="action-button"
         onClick={() => {
           setOpen();
-          setValue("polygon");
+          setValue('polygon');
         }}
       >
         {!open ? (
@@ -88,15 +88,15 @@ const FilterResult = ({ data, open, setOpen, setFilterType, clearFilter }) => {
             theme={{
               components: {
                 Segmented: {
-                  trackBg: "#ccc",
-                  itemColor: "#fff",
-                  itemSelectedBg: "#f0f0f0",
+                  trackBg: '#ccc',
+                  itemColor: '#fff',
+                  itemSelectedBg: '#f0f0f0',
                 },
               },
             }}
           >
             <Segmented
-              options={["polygon", "circle"]}
+              options={['polygon', 'circle']}
               onChange={(value) => {
                 setFilterType(value);
                 clearFilter();
@@ -120,12 +120,12 @@ const FilterResult = ({ data, open, setOpen, setFilterType, clearFilter }) => {
                   <h4>{point?.name}</h4>
                 </div>
               ) : (
-                ""
+                ''
               );
             })
           ) : (
-            <span style={{ margin: "auto" }}>
-              Select to minimum 4 coordinate{" "}
+            <span style={{ margin: 'auto' }}>
+              Select to minimum 4 coordinate{' '}
             </span>
           )}
         </div>

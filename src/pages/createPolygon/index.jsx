@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef } from "react";
-import "../home/app.css";
-import { MapContainer, TileLayer } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import { Button, Input, Modal, Space } from "antd";
-import { useParams, useNavigate } from "react-router-dom";
-import { NormalPolygon } from "./normal.polygon";
-import RangeInput from "../../util/range.input";
-import { CirclePolygon } from "./circle.polygon";
-import { handleGetCenter } from "../../util/service";
+import { useState, useEffect, useRef } from 'react';
+import '../home/app.css';
+import { MapContainer, TileLayer } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Button, Input, Modal, Space } from 'antd';
+import { useParams, useNavigate } from 'react-router-dom';
+import { NormalPolygon } from './normal.polygon';
+import RangeInput from '../../util/range.input';
+import { CirclePolygon } from './circle.polygon';
+import { handleGetCenter } from '../../util/service';
 
 export const CreatePolygon = () => {
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,7 @@ export const CreatePolygon = () => {
   const [center, setCenter] = useState(null);
   const [radius, setRadius] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [polygonName, setPolygonName] = useState("");
+  const [polygonName, setPolygonName] = useState('');
   const [userLocation, setUserLocation] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(14);
   const mapRef = useRef(null);
@@ -30,7 +30,7 @@ export const CreatePolygon = () => {
 
   const calculatePolygonCentroid = (polygon) => {
     if (!polygon || polygon.length === 0) {
-      throw new Error("Polygon points are required.");
+      throw new Error('Polygon points are required.');
     }
     let xSum = 0;
     let ySum = 0;
@@ -47,16 +47,16 @@ export const CreatePolygon = () => {
 
   const handleOk = (e) => {
     e.stopPropagation();
-    if (!polygonName) return alert("Please enter a name for the polygon!");
-    const oldPositions = JSON.parse(localStorage.getItem("polygons")) || [];
+    if (!polygonName) return alert('Please enter a name for the polygon!');
+    const oldPositions = JSON.parse(localStorage.getItem('polygons')) || [];
     let newPositions = [...oldPositions];
-    if (id != "new") {
+    if (id != 'new') {
       newPositions[id] = {
         ...newPositions[id],
         name: polygonName,
         positions: positions[0],
         center:
-          type === "circle" ? center : calculatePolygonCentroid(positions[0]),
+          type === 'circle' ? center : calculatePolygonCentroid(positions[0]),
         radius,
       };
     } else {
@@ -65,17 +65,27 @@ export const CreatePolygon = () => {
         name: polygonName,
         positions: positions[0],
         center:
-          type === "circle" ? center : calculatePolygonCentroid(positions[0]),
-        type: type === "circle" ? "circle" : "polygon",
+          type === 'circle' ? center : calculatePolygonCentroid(positions[0]),
+        type: type === 'circle' ? 'circle' : 'polygon',
         radius,
         color,
       });
+      polygonToSave = {
+        name: polygonName,
+        positions: positions[0],
+        center:
+          type === 'circle' ? center : calculatePolygonCentroid(positions[0]),
+        type: type === 'circle' ? 'circle' : 'polygon',
+        radius,
+        color,
+      };
+      newPositions.push(polygonToSave);
     }
-    localStorage.setItem("polygons", JSON.stringify(newPositions));
-    alert("Polygons saved successfully!");
+    localStorage.setItem('polygons', JSON.stringify(newPositions));
+    alert('Polygons saved successfully!');
     setIsModalOpen(false);
     handleGetCenter(mapRef);
-    navigate("/");
+    navigate('/');
   };
 
   const handleCancel = (e) => {
@@ -84,12 +94,12 @@ export const CreatePolygon = () => {
   };
 
   const getPolygon = (id) => {
-    if (id != "new") {
-      const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
+    if (id != 'new') {
+      const polygons = JSON.parse(localStorage.getItem('polygons')) || [];
       const polygon = polygons[id];
       if (polygon) {
         setPolygonName(polygon.name);
-        if (type === "circle") {
+        if (type === 'circle') {
           setCenter(polygon.center);
           setRadius(polygon.radius);
         } else {
@@ -99,13 +109,13 @@ export const CreatePolygon = () => {
       }
     } else {
       setPositions([[]]);
-      setPolygonName("");
+      setPolygonName('');
     }
   };
 
   useEffect(() => {
     setLoading(true);
-    setUserLocation(JSON.parse(localStorage.getItem("userLocation")));
+    setUserLocation(JSON.parse(localStorage.getItem('userLocation')));
     setTimeout(() => {
       setLoading(false);
     }, 10);
@@ -121,13 +131,13 @@ export const CreatePolygon = () => {
   };
 
   const deletePolygon = () => {
-    if (id != "new") {
-      const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
+    if (id != 'new') {
+      const polygons = JSON.parse(localStorage.getItem('polygons')) || [];
       polygons.splice(id, 1);
-      localStorage.setItem("polygons", JSON.stringify(polygons));
-      alert("Polygon deleted successfully!");
+      localStorage.setItem('polygons', JSON.stringify(polygons));
+      alert('Polygon deleted successfully!');
       setIsModalOpen(false);
-      navigate("/");
+      navigate('/');
     }
     handleGetCenter(mapRef);
   };
@@ -136,9 +146,9 @@ export const CreatePolygon = () => {
     <>
       <MapContainer
         center={userLocation || [51.505, -0.09]}
-        zoom={type === "polygon" ? 14 : zoomLevel}
+        zoom={type === 'polygon' ? 14 : zoomLevel}
         minZoom={3}
-        style={{ height: "100vh", width: "100%" }}
+        style={{ height: '100vh', width: '100%' }}
         doubleClickZoom={false}
         ref={mapRef}
       >
@@ -147,7 +157,7 @@ export const CreatePolygon = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {type === "polygon" ? (
+        {type === 'polygon' ? (
           <NormalPolygon
             positions={positions}
             activePolygon={activePolygon}
@@ -165,7 +175,7 @@ export const CreatePolygon = () => {
         )}
 
         <Space className="button-group" direction="horizontal">
-          {type === "circle" && (
+          {type === 'circle' && (
             <RangeInput
               value={radius}
               setValue={setRadius}
@@ -173,7 +183,7 @@ export const CreatePolygon = () => {
               center={center}
             />
           )}
-          {id != "new" && (
+          {id != 'new' && (
             <>
               <Button
                 type="primary"
@@ -193,7 +203,7 @@ export const CreatePolygon = () => {
           <Button
             type="default"
             onClick={() => {
-              navigate("/");
+              navigate('/');
               handleGetCenter(mapRef);
             }}
             className="save-polygon"
@@ -213,7 +223,7 @@ export const CreatePolygon = () => {
             placeholder="input with clear icon"
             allowClear
             onChange={savePolygons}
-            style={{ fontSize: "16px" }}
+            style={{ fontSize: '16px' }}
             value={polygonName}
           />
         </Modal>

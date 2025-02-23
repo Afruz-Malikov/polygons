@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import "./app.css";
+import { useState, useEffect, useRef } from 'react';
+import './app.css';
 import {
   MapContainer,
   TileLayer,
@@ -7,19 +7,21 @@ import {
   Popup,
   Polyline,
   Circle,
-} from "react-leaflet";
-import L from "leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
-import "leaflet/dist/leaflet.css";
-import { Button, Dropdown, Space } from "antd";
-import { useNavigate } from "react-router-dom";
-import { NewPolygonIcon } from "../../util/add.icon";
-import { FilterComponent } from "./filter";
-import FilterResult from "../filter/filter";
-import { filterPointsInPolygon, filterPointsWithCircle } from "./featcher";
-import { CirclePolygon } from "../createPolygon/circle.polygon";
-import RangeInput from "../../util/range.input";
-import { handleGetCenter } from "../../util/service";
+} from 'react-leaflet';
+import L from 'leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
+import 'leaflet/dist/leaflet.css';
+import { Button, Dropdown, Space } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { NewPolygonIcon } from '../../util/add.icon';
+import { FilterComponent } from './filter';
+import FilterResult from '../filter/filter';
+import { filterPointsInPolygon, filterPointsWithCircle } from './featcher';
+import { CirclePolygon } from '../createPolygon/circle.polygon';
+import RangeInput from '../../util/range.input';
+import { handleGetCenter } from '../../util/service';
+import { changePolygon } from '../../service/poligons.service';
+import customFetch from '../../util/fetch';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -32,17 +34,17 @@ function App() {
   const [openFilter, setOpenFilter] = useState(false);
   const [positions, setPositions] = useState([[]]);
   const [activePolygon, setActivePolygon] = useState(0);
-  const [filterType, setFilterType] = useState("polygon");
+  const [filterType, setFilterType] = useState('polygon');
   const [center, setCenter] = useState(null);
   const [radius, setRadius] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(14);
   const navigate = useNavigate();
   const mapRef = useRef();
 
-  const polygonTypes = ["polygon", "circle"].map((type) => {
+  const polygonTypes = ['polygon', 'circle'].map((type) => {
     return {
       key: type,
-      label: <span style={{ textTransform: "capitalize" }}>{type}</span>,
+      label: <span style={{ textTransform: 'capitalize' }}>{type}</span>,
       onClick: () => {
         navigate(`/polygon/new/${type}`);
         setOpen(false);
@@ -50,36 +52,87 @@ function App() {
     };
   });
 
-  const fetchPolygons = () => {
-    const polygons = JSON.parse(localStorage.getItem("polygons")) || [];
-    setPolygons(polygons);
+  const fetchPolygons = async () => {
+    try {
+      const localPolygons = JSON.parse(localStorage.getItem('polygons')) || [];
+      if (localPolygons.length) {
+        setPolygons(localPolygons);
+      }
+
+      const response = await customFetch('/data');
+      const jsonResponse = await response.json();
+
+      const {
+        data: { data: apiData },
+      } = jsonResponse;
+
+      if (!apiData || !apiData.map_place_polygons) {
+        throw new Error('Данные по полигонам не найдены');
+      }
+
+      const formattedPolygons = Object.entries(apiData.map_place_polygons).map(
+        ([id, polygon]) => {
+          const positions = polygon.coordinates[0].map((position) => ({
+            lat: position[0],
+            lng: position[1],
+          }));
+
+          return {
+            id,
+            name: polygon.var,
+            positions,
+            center: {
+              lat: polygon.json?.lat || polygon.coordinates[0][0][0],
+              lng: polygon.json?.lng || polygon.coordinates[0][0][1],
+            },
+            radius: polygon.json?.radius || 0,
+            type: polygon.coordinates[0].length === 1 ? 'circle' : 'polygon',
+            color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+          };
+        },
+      );
+
+      if (!localPolygons.length) {
+        setPolygons(formattedPolygons);
+        localStorage.setItem('polygons', JSON.stringify(formattedPolygons));
+      }
+      console.log(formattedPolygons);
+    } catch (error) {
+      console.error('Ошибка при получении полигонов:', error);
+    }
   };
 
   useEffect(() => {
     setLoading(true);
     fetchPolygons();
-    const u_l = localStorage.getItem("userLocation");
-    if (u_l) {
-      setUserLocation(JSON.parse(u_l));
+
+    const storedLocation = localStorage.getItem('userLocation');
+    if (storedLocation) {
+      setUserLocation(JSON.parse(storedLocation));
       setTimeout(() => {
         setLoading(false);
       }, 10);
       return;
     }
+
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setUserLocation([position.coords.latitude, position.coords.longitude]);
-        localStorage.setItem(
-          "userLocation",
-          JSON.stringify([position.coords.latitude, position.coords.longitude])
-        );
-        setTimeout(() => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = [
+            position.coords.latitude,
+            position.coords.longitude,
+          ];
+          setUserLocation(location);
+          localStorage.setItem('userLocation', JSON.stringify(location));
+          setTimeout(() => {
+            setLoading(false);
+          }, 10);
+        },
+        () => {
+          setUserLocation([33.58945533558725, -7.626056671142579]);
           setLoading(false);
-        }, 10);
-      }, () => {
-        setUserLocation([33.58945533558725, -7.626056671142579]);
-        setLoading(false);
-      });
+        },
+      );
     } else {
       setUserLocation([33.58945533558725, -7.626056671142579]);
       setLoading(false);
@@ -91,14 +144,14 @@ function App() {
   }
 
   const handleOpenChange = (nextOpen, info) => {
-    if (info.source === "trigger" || nextOpen) {
+    if (info.source === 'trigger' || nextOpen) {
       setOpen(nextOpen);
       handleGetCenter(mapRef);
     }
   };
 
   const handleOpenChange1 = (nextOpen, info) => {
-    if (info.source === "trigger" || nextOpen) {
+    if (info.source === 'trigger' || nextOpen) {
       setOpen1(nextOpen);
       handleGetCenter(mapRef);
     }
@@ -110,16 +163,17 @@ function App() {
         key: index,
         label: polygon.name,
         onClick: () => {
-          navigate(`/polygon/${index}/${polygon?.type || "polygon"}`);
+          navigate(`/polygon/${index}/${polygon?.type || 'polygon'}`);
           setOpen(false);
           localStorage.setItem(
-            "userLocation",
-            JSON.stringify([polygon?.center?.lat, polygon?.center?.lng])
+            'userLocation',
+            JSON.stringify([polygon?.center?.lat, polygon?.center?.lng]),
           );
         },
       };
     });
   };
+
   const closeFilter = () => {
     setOpenFilter(!openFilter);
     setPositions([[]]);
@@ -128,7 +182,7 @@ function App() {
     setOpenedCircle([]);
     setCenter(null);
     setRadius(0);
-    setFilterType("polygon");
+    setFilterType('polygon');
     handleGetCenter(mapRef);
   };
 
@@ -142,8 +196,44 @@ function App() {
     handleGetCenter(mapRef);
   };
 
+  const handleSavePolygon = async (polygon) => {
+    try {
+      let answer;
+      if (polygon.type === 'circle') {
+        const response = await changePolygon({
+          id: polygon?.id,
+          var: polygon.name,
+          ru: polygon.name,
+          json: {
+            lat: polygon?.center?.lat,
+            lng: polygon?.center?.lng,
+            radius: polygon?.radius,
+          },
+        });
+        answer = response;
+      } else {
+        const { lat: fPlat, lng: fPlng } = polygon?.positions[0];
+        const formattedPolygonPosition = polygon?.positions?.map((position) => [
+          position?.lat,
+          position?.lng,
+        ]);
+        const response = await changePolygon({
+          id: polygon?.id,
+          var: polygon.name,
+          en: polygon?.name,
+          coordinates: [[...formattedPolygonPosition, [fPlat, fPlng]]],
+        });
+        answer = response;
+      }
+      console.log(answer);
+      alert('Polygon saved');
+    } catch (error) {
+      console.error('Error in changePoligon:', error);
+    }
+  };
+
   const result = openFilter
-    ? filterType === "polygon"
+    ? filterType === 'polygon'
       ? filterPointsInPolygon(polygons, positions)
       : filterPointsWithCircle(polygons, center, radius)
     : [];
@@ -156,7 +246,7 @@ function App() {
       circle = [];
     } else {
       result?.map((polygon) => {
-        if (polygon?.type === "circle") {
+        if (polygon?.type === 'circle') {
           circle.push(polygon);
         } else {
           points.push(polygon?.positions);
@@ -166,20 +256,21 @@ function App() {
     setOpenedPolygons(points);
     setOpenedCircle(circle);
   };
+
   return (
-    loading === false && (
+    !loading && (
       <>
         <MapContainer
           center={userLocation}
-          zoom={filterType === "polygon" ? 14 : zoomLevel}
+          zoom={filterType === 'polygon' ? 14 : zoomLevel}
           minZoom={3}
-          style={{ height: "100vh", width: "100%" }}
+          style={{ height: '100vh', width: '100%' }}
           doubleClickZoom={false}
           ref={mapRef}
         >
           <Button
-            className={`show-polygon-points ${openFilter ? "open" : ""} ${
-              result?.length === 0 && "disabled"
+            className={`show-polygon-points ${openFilter ? 'open' : ''} ${
+              result?.length === 0 && 'disabled'
             }`}
             type="primary"
             onClick={getPolygonPoints}
@@ -194,7 +285,7 @@ function App() {
             setFilterType={setFilterType}
             clearFilter={clearFilter}
           />
-          {filterType === "circle" && (
+          {filterType === 'circle' && (
             <RangeInput
               value={radius}
               setValue={setRadius}
@@ -208,7 +299,7 @@ function App() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {openFilter &&
-            (filterType === "polygon" ? (
+            (filterType === 'polygon' ? (
               <FilterComponent
                 positions={positions}
                 setActivePolygon={setActivePolygon}
@@ -230,10 +321,10 @@ function App() {
                 setZoomLevel={setZoomLevel}
               />
             ))}
-          {openedPolygon?.map((polygon, polygonIndex) => (
+          {openedPolygon?.map((polygonPositions, polygonIndex) => (
             <Polyline
               key={polygonIndex}
-              positions={polygon || []}
+              positions={polygonPositions || []}
               color={polygons?.[polygonIndex]?.color}
             />
           ))}
@@ -250,7 +341,7 @@ function App() {
           {openedPolygon?.map((item, polygonIndex) => {
             return item?.map((position, index) => {
               const m_icon = L.divIcon({
-                className: "custom-point-icon",
+                className: 'custom-point-icon',
                 html: `<span style="background: ${polygons?.[polygonIndex]?.color}; width: 11px; height: 11px; border-radius: 50%; display: inline-block;"></span>`,
                 iconAnchor: [5, 8],
               });
@@ -267,16 +358,16 @@ function App() {
           <MarkerClusterGroup chunkedLoading>
             {result?.map((polygon, index) => {
               const customIcon = L.divIcon({
-                className: "custom-badge-icon",
+                className: 'custom-badge-icon',
                 iconAnchor: [17, 10],
                 html: `
-      <div style="text-align: center;">
-        <div style="border-radius: 15px; padding: 0px 8px;">
-          ${polygon.name}
-        </div>
-        <img src="https://cdn-icons-png.flaticon.com/512/12727/12727781.png" alt="icon" style="width: 34px; height: 34px;" />
-      </div>
-    `,
+                  <div style="text-align: center;">
+                    <div style="border-radius: 15px; padding: 0px 8px;">
+                      ${polygon.name}
+                    </div>
+                    <img src="https://cdn-icons-png.flaticon.com/512/12727/12727781.png" alt="icon" style="width: 34px; height: 34px;" />
+                  </div>
+                `,
               });
 
               return (
@@ -285,37 +376,134 @@ function App() {
                   position={polygon?.center || null}
                   icon={customIcon}
                 >
-                  <Popup minWidth={110}>
-                    <p style={{ minWidth: "120px" }}>
+                  {/* Добавляем динамический key для Popup, чтобы при обновлении данных происходила перерисовка */}
+                  <Popup minWidth={110} key={`${polygon.id}-${polygon.name}`}>
+                    <p style={{ minWidth: '120px' }}>
                       Polygon: {polygon?.name}
                     </p>
                     <p className="polygon-color">
-                      Color:{" "}
+                      Color:{' '}
                       <span style={{ background: polygon?.color }}></span>
                     </p>
-                    <details style={{ width: "100%" }}>
-                      <summary>polygon coordinates</summary>
-                      {polygon.type !== "circle" ? (
+                    <details style={{ width: '100%' }}>
+                      <div style={{ display: 'flex' }}>
+                        <summary>polygon coordinates</summary>
+                      </div>
+                      {polygon.type !== 'circle' ? (
                         polygon?.positions?.map((position, positionIndex) => (
                           <div key={positionIndex}>
-                            <p style={{ inlineSize: "100%" }}>
-                              {positionIndex + 1}:{" "}
-                              {[`${position?.lat}, ${position?.lng}`]}
+                            <p style={{ inlineSize: '100%' }}>
+                              {positionIndex + 1}:{' '}
+                              {`${position?.lat}, ${position?.lng}`}
                             </p>
                           </div>
                         ))
                       ) : (
                         <>
-                          <p style={{ inlineSize: "100%" }}>
+                          <p style={{ inlineSize: '100%' }}>
                             Center coordinates: <br />
-                            {[`${polygon.center?.lat}, ${polygon.center?.lng}`]}
+                            {`${polygon.center?.lat}, ${polygon.center?.lng}`}
                           </p>
-                          <p style={{ inlineSize: "100%" }}>
+                          <p style={{ inlineSize: '100%' }}>
                             Radius: {polygon.radius}m
                           </p>
                         </>
                       )}
                     </details>
+                    <div
+                      style={{ width: '100%', display: 'flex', gap: '30px' }}
+                    >
+                      <Button
+                        type="default"
+                        style={{ marginTop: '20px', fontSize: '1.08333em' }}
+                        onClick={async () => {
+                          try {
+                            // Читаем данные из буфера обмена
+                            const clipboardText =
+                              await navigator.clipboard.readText();
+                            const lines = clipboardText
+                              .split('\n')
+                              .filter((line) => line.trim() !== '');
+
+                            if (lines.length < 2) {
+                              alert(
+                                'Буфер обмена не содержит достаточных данных.',
+                              );
+                              return;
+                            }
+
+                            // Первая строка – новое имя полигона
+                            const newName = lines[0].trim();
+
+                            // Остальные строки – координаты. Предполагается, что данные записаны в формате:
+                            // "115,664345  -8,446320" (где первое значение — долгота, второе — широта)
+                            const newPositions = lines
+                              .slice(1)
+                              .map((line) => {
+                                const parts = line.split(/\s+/);
+                                if (parts.length < 2) return null;
+                                // Заменяем запятую на точку для корректного преобразования в число
+                                const lngStr = parts[0].replace(',', '.');
+                                const latStr = parts[1].replace(',', '.');
+                                return {
+                                  // Меняем порядок: первое значение — lng, второе — lat
+                                  lat: parseFloat(latStr),
+                                  lng: parseFloat(lngStr),
+                                };
+                              })
+                              .filter((item) => item !== null);
+
+                            if (newPositions.length === 0) {
+                              alert(
+                                'Буфер обмена не содержит корректных координат.',
+                              );
+                              return;
+                            }
+
+                            // Создаём обновлённый объект полигона
+                            const updatedPolygon = {
+                              ...polygon,
+                              name: newName,
+                              positions: newPositions,
+                              center: newPositions[0],
+                              type:
+                                newPositions.length === 1
+                                  ? 'circle'
+                                  : 'polygon',
+                            };
+                            setPolygons((prevPolygons) => {
+                              const newPolygons = [...prevPolygons];
+                              newPolygons[index] = updatedPolygon;
+                              return newPolygons;
+                            });
+                          } catch (error) {
+                            console.error(
+                              'Ошибка при чтении буфера обмена:',
+                              error,
+                            );
+                            alert(
+                              'Не удалось прочитать данные из буфера обмена.',
+                            );
+                          }
+                        }}
+                      >
+                        Вставить
+                      </Button>
+
+                      <Button
+                        type="primary"
+                        style={{
+                          marginTop: '20px',
+                          fontSize: '1.08333em',
+                          marginRight: '10px',
+                        }}
+                        onClick={() => {
+                          handleSavePolygon(polygon);
+                        }}
+                      >
+                        Сохранить
+                      </Button>
+                    </div>
                   </Popup>
                 </Marker>
               );
@@ -326,7 +514,7 @@ function App() {
             <Dropdown
               menu={{ items: getPolygons() }}
               placement="bottomRight"
-              trigger={["click"]}
+              trigger={['click']}
               onOpenChange={handleOpenChange}
               open={open}
             >
@@ -341,7 +529,7 @@ function App() {
             <Dropdown
               menu={{ items: polygonTypes }}
               placement="bottomRight"
-              trigger={["click"]}
+              trigger={['click']}
               onOpenChange={handleOpenChange1}
               open={open1}
             >
