@@ -8,6 +8,7 @@ import { NormalPolygon } from './normal.polygon';
 import RangeInput from '../../util/range.input';
 import { CirclePolygon } from './circle.polygon';
 import { handleGetCenter } from '../../util/service';
+import { deletePolygon, editPoligon } from '../../service/poligons.service';
 
 export const CreatePolygon = () => {
   const [loading, setLoading] = useState(true);
@@ -45,37 +46,74 @@ export const CreatePolygon = () => {
     return centroid;
   };
 
-  const handleOk = (e) => {
-    e.stopPropagation();
-    if (!polygonName) return alert('Please enter a name for the polygon!');
-    const oldPositions = JSON.parse(localStorage.getItem('polygons')) || [];
-    let newPositions = [...oldPositions];
-    if (id != 'new') {
-      newPositions[id] = {
-        ...newPositions[id],
-        name: polygonName,
-        positions: positions[0],
-        center:
-          type === 'circle' ? center : calculatePolygonCentroid(positions[0]),
-        radius,
-      };
-    } else {
-      const color = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-      newPositions.push({
-        name: polygonName,
-        positions: positions[0],
-        center:
-          type === 'circle' ? center : calculatePolygonCentroid(positions[0]),
-        type: type === 'circle' ? 'circle' : 'polygon',
-        radius,
-        color,
-      });
+  const handleOk = async (e) => {
+    try {
+      e.stopPropagation();
+      if (!polygonName) return alert('Please enter a name for the polygon!');
+      const oldPositions = JSON.parse(localStorage.getItem('polygons')) || [];
+      let newPositions = [...oldPositions];
+      const formattedPolygonPosition = positions[0]?.map(({ lat, lng }) => [
+        lat,
+        lng,
+      ]);
+      if (id != 'new') {
+        const response = editPoligon(
+          id,
+          polygonName,
+          formattedPolygonPosition,
+          center,
+          radius,
+        );
+        if (response.status === 'error') {
+          throw new Error('Error saving polygon!');
+        }
+        newPositions.forEach((polygon) =>
+          polygon.id == id
+            ? {
+                ...polygon,
+                name: polygonName,
+                positions: positions[0],
+                center:
+                  type === 'circle'
+                    ? center
+                    : calculatePolygonCentroid(positions[0]),
+                radius,
+              }
+            : polygon,
+        );
+      } else {
+        const color = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+        const response = await editPoligon(
+          undefined,
+          polygonName,
+          formattedPolygonPosition,
+          center,
+          radius,
+          color,
+        );
+        console.log(response);
+        if (response.status === 'error') {
+          throw new Error('Error saving polygon!');
+        }
+        newPositions.push({
+          name: polygonName,
+          positions: positions[0],
+          center:
+            type === 'circle' ? center : calculatePolygonCentroid(positions[0]),
+          type: type === 'circle' ? 'circle' : 'polygon',
+          radius,
+          color,
+        });
+      }
+      localStorage.setItem('polygons', JSON.stringify(newPositions));
+      alert('Polygons saved successfully!');
+      setIsModalOpen(false);
+      handleGetCenter(mapRef);
+      navigate('/');
+    } catch (error) {
+      alert('Error saving polygon!');
+      console.log(error);
     }
-    localStorage.setItem('polygons', JSON.stringify(newPositions));
-    alert('Polygons saved successfully!');
-    setIsModalOpen(false);
-    handleGetCenter(mapRef);
-    navigate('/');
   };
 
   const handleCancel = (e) => {
@@ -86,7 +124,7 @@ export const CreatePolygon = () => {
   const getPolygon = (id) => {
     if (id != 'new') {
       const polygons = JSON.parse(localStorage.getItem('polygons')) || [];
-      const polygon = polygons[id];
+      const polygon = polygons.find((polygon) => polygon.id == id);
       if (polygon) {
         setPolygonName(polygon.name);
         if (type === 'circle') {
@@ -120,16 +158,27 @@ export const CreatePolygon = () => {
     setPolygonName(e.target.value);
   };
 
-  const deletePolygon = () => {
-    if (id != 'new') {
-      const polygons = JSON.parse(localStorage.getItem('polygons')) || [];
-      polygons.splice(id, 1);
-      localStorage.setItem('polygons', JSON.stringify(polygons));
-      alert('Polygon deleted successfully!');
-      setIsModalOpen(false);
-      navigate('/');
+  const handleDeletePolygon = async () => {
+    try {
+      if (id != 'new') {
+        console.log(id);
+        const response = await deletePolygon(id);
+        if (response.status === 'error') {
+          throw new Error('Error deleting polygon!');
+        }
+        console.log(response);
+        const polygons = JSON.parse(localStorage.getItem('polygons')) || [];
+        polygons.splice(id, 1);
+        localStorage.setItem('polygons', JSON.stringify(polygons));
+        alert('Polygon deleted successfully!');
+        setIsModalOpen(false);
+        navigate('/');
+      }
+      handleGetCenter(mapRef);
+    } catch (error) {
+      console.log(error);
+      alert('Error deleting polygon!');
     }
-    handleGetCenter(mapRef);
   };
 
   return (
@@ -177,7 +226,7 @@ export const CreatePolygon = () => {
             <>
               <Button
                 type="primary"
-                onClick={deletePolygon}
+                onClick={handleDeletePolygon}
                 className="my_polygons"
                 danger
               >
