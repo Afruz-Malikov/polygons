@@ -357,7 +357,6 @@ function App() {
                   </div>
                 `,
               });
-              console.log(`${index}`, polygon.name);
               return (
                 <Marker
                   key={`polygon-${index}`}
