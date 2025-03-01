@@ -37,7 +37,7 @@ function App() {
   const [filterType, setFilterType] = useState('polygon');
   const [center, setCenter] = useState(null);
   const [radius, setRadius] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState(14);
+  const [zoomLevel, setZoomLevel] = useState(7);
   const navigate = useNavigate();
   const mapRef = useRef();
 
@@ -410,7 +410,6 @@ function App() {
                           </p>
                         </>
                       )}
-                      coordinates
                     </details>
                     <div
                       style={{ width: '100%', display: 'flex', gap: '30px' }}
@@ -420,32 +419,58 @@ function App() {
                         style={{ marginTop: '20px', fontSize: '1.08333em' }}
                         onClick={async () => {
                           try {
-                            const clipboardText =
-                              await navigator.clipboard.readText();
+                            if (!navigator.clipboard) {
+                              alert(
+                                'Доступ к буферу обмена ограничен в этом браузере.',
+                              );
+                              return null;
+                            }
                             const lines = clipboardText
                               .split('\n')
                               .filter((line) => line.trim() !== '');
                             if (lines.length < 2) {
+                              alert(clipboardText);
                               alert(
                                 'Буфер обмена не содержит достаточных данных.',
                               );
                               return;
                             }
-                            console.log('Current INsert', polygon.name, index);
-                            const newName = lines[0];
+                            const newName =
+                              lines[0].includes(':') || lines[0].includes(',')
+                                ? polygon.name
+                                : lines[0];
                             const newPositions = lines
-                              .slice(1)
+                              .slice(!newName ? 0 : 1)
                               .map((line) => {
-                                const parts = line.split(' ');
+                                let parts;
+
+                                if (line.includes(':')) {
+                                  // Формат с номерами
+                                  parts = line
+                                    .split(':')[1]
+                                    .trim()
+                                    .split(',')
+                                    .map((s) => s.trim().replace(',', '.'));
+                                } else {
+                                  // Обычный формат
+                                  parts = line
+                                    .trim()
+                                    .split(/\s+/)
+                                    .map((s) => s.replace(',', '.'));
+                                }
+
                                 if (parts.length < 2) return null;
-                                const lngStr = parts[1].replace(',', '.');
-                                const latStr = parts[0].replace(',', '.');
+
                                 return {
-                                  lat: parseFloat(latStr),
-                                  lng: parseFloat(lngStr),
+                                  lat: parseFloat(parts[0]),
+                                  lng: parseFloat(parts[1]),
                                 };
                               })
                               .filter((item) => item !== null);
+
+                            console.log(newPositions);
+
+                            console.log('New Positions', newPositions);
                             if (newPositions.length === 0) {
                               alert(
                                 'Буфер обмена не содержит корректных координат.',
@@ -456,6 +481,9 @@ function App() {
                               const newPolygons = [...prevPolygons];
                               newPolygons[index] = {
                                 ...newPolygons[index],
+                                name: newName,
+                                clipPositions: newPositions,
+                                clipCenter: newPositions[0],
                               };
                               return newPolygons;
                             });
@@ -465,8 +493,10 @@ function App() {
                               'Ошибка при чтении буфера обмена:',
                               error,
                             );
+                            alert(navigator.clipboard);
                             alert(
-                              'Не удалось прочитать данные из буфера обмена.',
+                              // 'Не удалось прочитать данные из буфера обмена.'
+                              error,
                             );
                           }
                         }}

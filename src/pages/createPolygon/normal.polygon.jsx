@@ -55,11 +55,11 @@ export const NormalPolygon = ({
         const clickedElement = e.originalEvent.target;
         if (
           clickedElement.closest('button') ||
-          clickedElement.closest('section')
+          clickedElement.closest('section') ||
+          isPointInPolygon(e.latlng, positions[0])
         ) {
           return;
         }
-        if (isPointInPolygon(e.latlng, positions[0])) return;
         const newPosition = e.latlng;
         setPositions((prevPositions) => {
           const updatedPositions = [...prevPositions];
@@ -100,105 +100,79 @@ export const NormalPolygon = ({
   };
 
   // Обработчик для перетаскивания закрытого полигона
-  // Обработчик для перетаскивания закрытого полигона, адаптированный для мобильных устройств
   const PolygonDragHandler = () => {
     const map = useMapEvents({
-      mousedown: handleStart,
-      mousemove: handleMove,
-      mouseup: handleEnd,
-      // Если потребуется, можно добавить pointer-события для лучшей поддержки современных браузеров:
-      pointerdown: handleStart,
-      pointermove: handleMove,
-      pointerup: handleEnd,
-    });
-
-    // Универсальный способ получения координат из события.
-    // Обычно в Leaflet e.latlng присутствует, но на случай нестандартных событий можно добавить проверку.
-    function getEventLatLng(e) {
-      if (e.latlng) return e.latlng;
-      if (e.touches && e.touches.length) {
-        return map.containerPointToLatLng([
-          e.touches[0].clientX,
-          e.touches[0].clientY,
-        ]);
-      }
-      return null;
-    }
-
-    function handleStart(e) {
-      const latlng = getEventLatLng(e);
-      if (!latlng) return;
-      console.log(e);
-      // Определяем, какой полигон будем перетаскивать
-      const polygonIndexForDragging =
-        activePolygon > 0 ? activePolygon - 1 : activePolygon;
-      const polygonPoints = positions[polygonIndexForDragging];
-
-      if (!polygonPoints || polygonPoints.length < 3) return;
-
-      // Проверяем, что полигон закрыт (первая и последняя точки "близки")
-      if (
-        !isCloseTo(
-          polygonPoints[0],
-          polygonPoints[polygonPoints.length - 1],
-          0.001,
-        )
-      )
-        return;
-
-      // Начинаем перетаскивание, если точка начала события находится внутри полигона
-      if (isPointInPolygon(latlng, polygonPoints)) {
-        draggingRef.current = true;
-        dragStartRef.current = { ...latlng, axis: null };
-        map.dragging.disable();
-      }
-    }
-
-    function handleMove(e) {
-      if (draggingRef.current && dragStartRef.current) {
-        const latlng = getEventLatLng(e);
-        if (!latlng) return;
-
-        const deltaLat = latlng.lat - dragStartRef.current.lat;
-        const deltaLng = latlng.lng - dragStartRef.current.lng;
-
-        // Если ось ещё не выбрана, определяем её по первому значимому смещению
-        if (dragStartRef.current.axis === null) {
-          dragStartRef.current.axis =
-            Math.abs(deltaLng) > Math.abs(deltaLat) ? 'x' : 'y';
-        }
-
-        const moveAlongX = dragStartRef.current.axis === 'x';
-        const moveAlongY = dragStartRef.current.axis === 'y';
-
+      mousedown(e) {
         const polygonIndexForDragging =
           activePolygon > 0 ? activePolygon - 1 : activePolygon;
+        const polygonPoints = positions[polygonIndexForDragging];
 
-        setPositions((prevPositions) => {
-          const updatedPositions = [...prevPositions];
-          const updatedPolygon = updatedPositions[polygonIndexForDragging].map(
-            (point) => ({
+        if (!polygonPoints || polygonPoints.length < 3) return;
+
+        if (
+          !isCloseTo(
+            polygonPoints[0],
+            polygonPoints[polygonPoints.length - 1],
+            0.001,
+          )
+        )
+          return;
+
+        if (isPointInPolygon(e.latlng, polygonPoints)) {
+          draggingRef.current = true;
+          dragStartRef.current = { ...e.latlng, axis: null };
+          map.dragging.disable();
+        }
+      },
+      mousemove(e) {
+        if (draggingRef.current && dragStartRef.current) {
+          const currentLatLng = e.latlng;
+          const deltaLat = currentLatLng.lat - dragStartRef.current.lat;
+          const deltaLng = currentLatLng.lng - dragStartRef.current.lng;
+          const threshold = 0.00005; // Уменьшенный порог для фиксации оси
+
+          // Фиксируем ось при малейшем отклонении
+          if (dragStartRef.current.axis === null) {
+            if (Math.abs(deltaLng) > threshold) {
+              dragStartRef.current.axis = 'x';
+            } else if (Math.abs(deltaLat) > threshold) {
+              dragStartRef.current.axis = 'y';
+            }
+          }
+
+          // Если ось зафиксирована, двигаем ТОЛЬКО в этом направлении
+          const moveAlongX = dragStartRef.current.axis === 'x';
+          const moveAlongY = dragStartRef.current.axis === 'y';
+
+          const polygonIndexForDragging =
+            activePolygon > 0 ? activePolygon - 1 : activePolygon;
+
+          setPositions((prevPositions) => {
+            const updatedPositions = [...prevPositions];
+            const updatedPolygon = updatedPositions[
+              polygonIndexForDragging
+            ].map((point) => ({
               lat: parseFloat(point.lat) + (moveAlongY ? deltaLat : 0),
               lng: parseFloat(point.lng) + (moveAlongX ? deltaLng : 0),
-            }),
-          );
-          updatedPositions[polygonIndexForDragging] = updatedPolygon;
-          return updatedPositions;
-        });
+            }));
 
-        // Обновляем стартовую точку только по выбранной оси, чтобы минимизировать накопление ошибки
-        if (moveAlongY) dragStartRef.current.lat = latlng.lat;
-        if (moveAlongX) dragStartRef.current.lng = latlng.lng;
-      }
-    }
+            updatedPositions[polygonIndexForDragging] = updatedPolygon;
+            return updatedPositions;
+          });
 
-    function handleEnd() {
-      if (draggingRef.current) {
-        draggingRef.current = false;
-        dragStartRef.current = null;
-        map.dragging.enable();
-      }
-    }
+          // Обновляем стартовую точку **ТОЛЬКО по выбранной оси**
+          if (moveAlongY) dragStartRef.current.lat = currentLatLng.lat;
+          if (moveAlongX) dragStartRef.current.lng = currentLatLng.lng;
+        }
+      },
+      mouseup() {
+        if (draggingRef.current) {
+          draggingRef.current = false;
+          dragStartRef.current = null;
+          map.dragging.enable();
+        }
+      },
+    });
 
     return null;
   };
