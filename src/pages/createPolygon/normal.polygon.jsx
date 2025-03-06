@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Marker, Polyline, useMapEvents } from 'react-leaflet';
 import PropTypes from 'prop-types';
 import L, { polygon } from 'leaflet';
@@ -19,7 +19,9 @@ export const NormalPolygon = ({
 }) => {
   const dragStartRef = useRef(null);
   const draggingRef = useRef(false);
-
+  const rotateStartRef = useRef(null);
+  const rotatingRef = useRef(null);
+  const rotateCenterRef = useRef(null);
   // Проверка близости двух точек с порогом (по умолчанию 0.001)
   const isCloseTo = (point1, point2, threshold = 0.001) => {
     const latDiff = Math.abs(point1?.lat - point2?.lat);
@@ -73,7 +75,6 @@ export const NormalPolygon = ({
               ...currentPolygon,
               currentPolygon[0],
             ];
-            // После закрытия полигона переключаемся на новый (пустой) для дальнейшего рисования
             setActivePolygon(activePolygon + 1);
             updatedPositions.push([]);
             return updatedPositions;
@@ -99,10 +100,10 @@ export const NormalPolygon = ({
     return null;
   };
 
-  // Обработчик для перетаскивания закрытого полигона
   const PolygonDragHandler = () => {
     const map = useMapEvents({
       mousedown(e) {
+        if (e.originalEvent.button === 2) return;
         const polygonIndexForDragging =
           activePolygon > 0 ? activePolygon - 1 : activePolygon;
         const polygonPoints = positions[polygonIndexForDragging];
@@ -129,9 +130,8 @@ export const NormalPolygon = ({
           const currentLatLng = e.latlng;
           const deltaLat = currentLatLng.lat - dragStartRef.current.lat;
           const deltaLng = currentLatLng.lng - dragStartRef.current.lng;
-          const threshold = 0.00005; // Уменьшенный порог для фиксации оси
+          const threshold = 0.00005;
 
-          // Фиксируем ось при малейшем отклонении
           if (dragStartRef.current.axis === null) {
             if (Math.abs(deltaLng) > threshold) {
               dragStartRef.current.axis = 'x';
@@ -140,29 +140,63 @@ export const NormalPolygon = ({
             }
           }
 
-          // Если ось зафиксирована, двигаем ТОЛЬКО в этом направлении
           const moveAlongX = dragStartRef.current.axis === 'x';
           const moveAlongY = dragStartRef.current.axis === 'y';
 
           const polygonIndexForDragging =
             activePolygon > 0 ? activePolygon - 1 : activePolygon;
 
+          // Коррекция долготы по широте
+          const center = getPolygonCenter(positions[polygonIndexForDragging]);
+
           setPositions((prevPositions) => {
             const updatedPositions = [...prevPositions];
+
             const updatedPolygon = updatedPositions[
               polygonIndexForDragging
-            ].map((point) => ({
-              lat: parseFloat(point.lat) + (moveAlongY ? deltaLat : 0),
-              lng: parseFloat(point.lng) + (moveAlongX ? deltaLng : 0),
-            }));
+            ].map((point) => {
+              return {
+                lat: point.lat + (moveAlongY ? deltaLat : 0),
+                lng:
+                  point.lng +
+                  (moveAlongX
+                    ? deltaLng * Math.cos((center.lat * Math.PI) / 180)
+                    : 0),
+              };
+            });
 
             updatedPositions[polygonIndexForDragging] = updatedPolygon;
             return updatedPositions;
           });
 
-          // Обновляем стартовую точку **ТОЛЬКО по выбранной оси**
           if (moveAlongY) dragStartRef.current.lat = currentLatLng.lat;
           if (moveAlongX) dragStartRef.current.lng = currentLatLng.lng;
+        }
+
+        if (rotatingRef.current && rotateCenterRef.current) {
+          const polygonIndexForRotation =
+            activePolygon > 0 ? activePolygon - 1 : activePolygon;
+          const center = rotateCenterRef.current;
+
+          const prevAngle = Math.atan2(
+            rotateStartRef.current.lat - center.lat,
+            rotateStartRef.current.lng - center.lng,
+          );
+          const newAngle = Math.atan2(
+            e.latlng.lat - center.lat,
+            e.latlng.lng - center.lng,
+          );
+          const angleDelta = newAngle - prevAngle;
+
+          setPositions((prevPositions) => {
+            const updatedPositions = [...prevPositions];
+            updatedPositions[polygonIndexForRotation] = updatedPositions[
+              polygonIndexForRotation
+            ].map((point) => rotatePointFixed(point, center, angleDelta));
+            return updatedPositions;
+          });
+
+          rotateStartRef.current = e.latlng;
         }
       },
       mouseup() {
@@ -171,10 +205,60 @@ export const NormalPolygon = ({
           dragStartRef.current = null;
           map.dragging.enable();
         }
+
+        if (rotatingRef.current) {
+          rotatingRef.current = false;
+          rotateStartRef.current = null;
+          rotateCenterRef.current = null;
+        }
+      },
+      contextmenu(e) {
+        const polygonIndexForRotation =
+          activePolygon > 0 ? activePolygon - 1 : activePolygon;
+        const polygonPoints = positions[polygonIndexForRotation];
+
+        if (!polygonPoints || polygonPoints.length < 3) return;
+
+        if (!isPointInPolygon(e.latlng, polygonPoints)) return;
+
+        rotatingRef.current = true;
+        rotateStartRef.current = e.latlng;
+        rotateCenterRef.current = getPolygonCenter(polygonPoints);
       },
     });
 
     return null;
+  };
+
+  /**
+   * Корректный поворот точки с учетом сферической геометрии
+   */
+  function rotatePointFixed(point, center, angle) {
+    const latR = (Number(point.lat) * Math.PI) / 180;
+    const lngR = (Number(point.lng) * Math.PI) / 180;
+    const centerLatR = (Number(center.lat) * Math.PI) / 180;
+    const centerLngR = (Number(center.lng) * Math.PI) / 180;
+
+    // Переводим координаты в метры
+    const x = (lngR - centerLngR) * Math.cos(centerLatR);
+    const y = latR - centerLatR;
+
+    // Применяем поворот
+    const newX = x * Math.cos(angle) - y * Math.sin(angle);
+    const newY = x * Math.sin(angle) + y * Math.cos(angle);
+
+    // Обратно в градусы
+    return {
+      lat: (newY + centerLatR) * (180 / Math.PI),
+      lng: (newX / Math.cos(centerLatR) + centerLngR) * (180 / Math.PI),
+    };
+  }
+
+  // Функция вычисления центра полигона
+  const getPolygonCenter = (points) => {
+    const latSum = points.reduce((sum, p) => sum + Number(p.lat), 0);
+    const lngSum = points.reduce((sum, p) => sum + Number(p.lng), 0);
+    return { lat: latSum / points.length, lng: lngSum / points.length };
   };
 
   // Функция добавления точки между существующими (при перетаскивании маркера)
