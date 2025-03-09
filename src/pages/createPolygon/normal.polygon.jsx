@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Marker, Polyline, useMapEvents } from 'react-leaflet';
+import { Marker, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import PropTypes from 'prop-types';
-import L, { polygon } from 'leaflet';
+import L from 'leaflet';
 
 const m_icon = new L.Icon({
   iconUrl:
@@ -20,8 +20,9 @@ export const NormalPolygon = ({
   const dragStartRef = useRef(null);
   const draggingRef = useRef(false);
   const rotateStartRef = useRef(null);
-  const rotatingRef = useRef(null);
+  const rotatingRef = useRef(false);
   const rotateCenterRef = useRef(null);
+
   // Проверка близости двух точек с порогом (по умолчанию 0.001)
   const isCloseTo = (point1, point2, threshold = 0.001) => {
     const latDiff = Math.abs(point1?.lat - point2?.lat);
@@ -29,7 +30,7 @@ export const NormalPolygon = ({
     return latDiff < threshold && lngDiff < threshold;
   };
 
-  // Определение, находится ли точка внутри полигона (алгоритм лучей)
+  // Алгоритм "лучей" для определения, находится ли точка внутри полигона
   const isPointInPolygon = (point, polygon) => {
     let x = point.lng,
       y = point.lat;
@@ -50,7 +51,35 @@ export const NormalPolygon = ({
     return inside;
   };
 
-  // Обработчик кликов для добавления точек в полигон
+  // Вычисление центра полигона
+  const getPolygonCenter = (points) => {
+    const latSum = points.reduce((sum, p) => sum + Number(p.lat), 0);
+    const lngSum = points.reduce((sum, p) => sum + Number(p.lng), 0);
+    return { lat: latSum / points.length, lng: lngSum / points.length };
+  };
+
+  // Функция поворота точки вокруг центра
+  function rotatePointFixed(point, center, angle) {
+    const latR = (Number(point.lat) * Math.PI) / 180;
+    const lngR = (Number(point.lng) * Math.PI) / 180;
+    const centerLatR = (Number(center.lat) * Math.PI) / 180;
+    const centerLngR = (Number(center.lng) * Math.PI) / 180;
+
+    // Переводим координаты в метры
+    const x = (lngR - centerLngR) * Math.cos(centerLatR);
+    const y = latR - centerLatR;
+
+    // Поворот
+    const newX = x * Math.cos(angle) - y * Math.sin(angle);
+    const newY = x * Math.sin(angle) + y * Math.cos(angle);
+
+    // Обратно в градусы
+    return {
+      lat: (newY + centerLatR) * (180 / Math.PI),
+      lng: (newX / Math.cos(centerLatR) + centerLngR) * (180 / Math.PI),
+    };
+  }
+
   const MapClickHandler = () => {
     useMapEvents({
       click(e) {
@@ -62,30 +91,32 @@ export const NormalPolygon = ({
         ) {
           return;
         }
-        const newPosition = e.latlng;
-        setPositions((prevPositions) => {
-          const updatedPositions = [...prevPositions];
-          const currentPolygon = updatedPositions[activePolygon];
+        if (!draggingRef.current) {
+          const newPosition = e.latlng;
+          setPositions((prevPositions) => {
+            const updatedPositions = [...prevPositions];
+            const currentPolygon = updatedPositions[activePolygon];
 
-          if (
-            currentPolygon?.length >= 3 &&
-            isCloseTo(newPosition, currentPolygon[0])
-          ) {
+            if (
+              currentPolygon?.length >= 3 &&
+              isCloseTo(newPosition, currentPolygon[0])
+            ) {
+              updatedPositions[activePolygon] = [
+                ...currentPolygon,
+                currentPolygon[0],
+              ];
+              setActivePolygon(activePolygon + 1);
+              updatedPositions.push([]);
+              return updatedPositions;
+            }
+
             updatedPositions[activePolygon] = [
-              ...currentPolygon,
-              currentPolygon[0],
+              ...(currentPolygon || []),
+              newPosition,
             ];
-            setActivePolygon(activePolygon + 1);
-            updatedPositions.push([]);
             return updatedPositions;
-          }
-
-          updatedPositions[activePolygon] = [
-            ...(currentPolygon || []),
-            newPosition,
-          ];
-          return updatedPositions;
-        });
+          });
+        }
       },
       drag(e) {
         const draggedElement = e?.originalEvent?.target;
@@ -123,6 +154,7 @@ export const NormalPolygon = ({
           draggingRef.current = true;
           dragStartRef.current = { ...e.latlng, axis: null };
           map.dragging.disable();
+          console.log('mousedown', draggingRef, dragStartRef);
         }
       },
       mousemove(e) {
@@ -151,14 +183,13 @@ export const NormalPolygon = ({
 
           setPositions((prevPositions) => {
             const updatedPositions = [...prevPositions];
-
             const updatedPolygon = updatedPositions[
               polygonIndexForDragging
             ].map((point) => {
               return {
-                lat: point.lat + (moveAlongY ? deltaLat : 0),
+                lat: Number(point.lat) + (moveAlongY ? deltaLat : 0),
                 lng:
-                  point.lng +
+                  Number(point.lng) +
                   (moveAlongX
                     ? deltaLng * Math.cos((center.lat * Math.PI) / 180)
                     : 0),
@@ -197,6 +228,7 @@ export const NormalPolygon = ({
           });
 
           rotateStartRef.current = e.latlng;
+          console.log('mousemove', draggingRef, dragStartRef);
         }
       },
       mouseup() {
@@ -210,6 +242,7 @@ export const NormalPolygon = ({
           rotatingRef.current = false;
           rotateStartRef.current = null;
           rotateCenterRef.current = null;
+          console.log('mouseup', draggingRef, dragStartRef);
         }
       },
       contextmenu(e) {
@@ -224,44 +257,14 @@ export const NormalPolygon = ({
         rotatingRef.current = true;
         rotateStartRef.current = e.latlng;
         rotateCenterRef.current = getPolygonCenter(polygonPoints);
+        console.log('contextmenu');
       },
     });
 
     return null;
   };
 
-  /**
-   * Корректный поворот точки с учетом сферической геометрии
-   */
-  function rotatePointFixed(point, center, angle) {
-    const latR = (Number(point.lat) * Math.PI) / 180;
-    const lngR = (Number(point.lng) * Math.PI) / 180;
-    const centerLatR = (Number(center.lat) * Math.PI) / 180;
-    const centerLngR = (Number(center.lng) * Math.PI) / 180;
-
-    // Переводим координаты в метры
-    const x = (lngR - centerLngR) * Math.cos(centerLatR);
-    const y = latR - centerLatR;
-
-    // Применяем поворот
-    const newX = x * Math.cos(angle) - y * Math.sin(angle);
-    const newY = x * Math.sin(angle) + y * Math.cos(angle);
-
-    // Обратно в градусы
-    return {
-      lat: (newY + centerLatR) * (180 / Math.PI),
-      lng: (newX / Math.cos(centerLatR) + centerLngR) * (180 / Math.PI),
-    };
-  }
-
-  // Функция вычисления центра полигона
-  const getPolygonCenter = (points) => {
-    const latSum = points.reduce((sum, p) => sum + Number(p.lat), 0);
-    const lngSum = points.reduce((sum, p) => sum + Number(p.lng), 0);
-    return { lat: latSum / points.length, lng: lngSum / points.length };
-  };
-
-  // Функция добавления точки между существующими (при перетаскивании маркера)
+  // Обработка добавления точки между существующими (при перетаскивании маркера)
   const addPointToPolygon = (newPoint) => {
     setPositions((prevPositions) => {
       const updatedPositions = [...prevPositions];
@@ -316,10 +319,216 @@ export const NormalPolygon = ({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
+  // Новый компонент для обработки touch-событий на мобильных устройствах
+  const MobileTouchHandler = () => {
+    const map = useMap();
+
+    useEffect(() => {
+      const container = map.getContainer();
+
+      const handleTouchStart = (e) => {
+        if (e.touches.length === 1) {
+          // Одно касание – перетаскивание
+          const touch = e.touches[0];
+          const containerPoint = map.mouseEventToContainerPoint({
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+          });
+          const latlng = map.containerPointToLatLng(containerPoint);
+          const polygonIndex =
+            activePolygon > 0 ? activePolygon - 1 : activePolygon;
+          const polygonPoints = positions[polygonIndex];
+          if (
+            polygonPoints &&
+            polygonPoints.length >= 3 &&
+            isPointInPolygon(latlng, polygonPoints)
+          ) {
+            draggingRef.current = true;
+            dragStartRef.current = { ...latlng, axis: null };
+            map.dragging.disable();
+          }
+        } else if (e.touches.length === 2) {
+          // Два касания – вращение только если оба касания внутри полигона
+          const touch1 = e.touches[0];
+          const touch2 = e.touches[1];
+
+          const containerPoint1 = map.mouseEventToContainerPoint({
+            clientX: touch1.clientX,
+            clientY: touch1.clientY,
+          });
+          const containerPoint2 = map.mouseEventToContainerPoint({
+            clientX: touch2.clientX,
+            clientY: touch2.clientY,
+          });
+          const latlng1 = map.containerPointToLatLng(containerPoint1);
+          const latlng2 = map.containerPointToLatLng(containerPoint2);
+
+          const polygonIndex =
+            activePolygon > 0 ? activePolygon - 1 : activePolygon;
+          const polygonPoints = positions[polygonIndex];
+
+          if (
+            polygonPoints &&
+            polygonPoints.length >= 3 &&
+            isPointInPolygon(latlng1, polygonPoints) &&
+            isPointInPolygon(latlng2, polygonPoints)
+          ) {
+            rotatingRef.current = true;
+            map.touchZoom.disable();
+
+            // Используем координаты второго касания для расчёта угла
+            rotateStartRef.current = latlng2;
+            rotateCenterRef.current = getPolygonCenter(polygonPoints);
+            console.log('Rotation started:', {
+              rotateStart: rotateStartRef.current,
+              rotateCenter: rotateCenterRef.current,
+            });
+          }
+        }
+      };
+
+      const handleTouchMove = (e) => {
+        // Обработка перетаскивания
+        if (draggingRef.current && e.touches.length === 1) {
+          e.preventDefault();
+          const touch = e.touches[0];
+          const containerPoint = map.mouseEventToContainerPoint({
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+          });
+          const currentLatLng = map.containerPointToLatLng(containerPoint);
+          const deltaLat = currentLatLng.lat - dragStartRef.current.lat;
+          const deltaLng = currentLatLng.lng - dragStartRef.current.lng;
+          const threshold = 0.9;
+
+          if (dragStartRef.current.axis === null) {
+            if (Math.abs(deltaLng) > threshold) {
+              dragStartRef.current.axis = 'x';
+            } else if (Math.abs(deltaLat) > threshold) {
+              dragStartRef.current.axis = 'y';
+            }
+          }
+          const moveAlongX = dragStartRef.current.axis === 'x';
+          const moveAlongY = dragStartRef.current.axis === 'y';
+          const polygonIndex =
+            activePolygon > 0 ? activePolygon - 1 : activePolygon;
+          const center = getPolygonCenter(positions[polygonIndex]);
+
+          setPositions((prevPositions) => {
+            const updatedPositions = [...prevPositions];
+            const updatedPolygon = updatedPositions[polygonIndex].map(
+              (point) => ({
+                lat: Number(point.lat) + (moveAlongY ? deltaLat : 0),
+                lng:
+                  Number(point.lng) +
+                  (moveAlongX
+                    ? deltaLng * Math.cos((center.lat * Math.PI) / 180)
+                    : 0),
+              }),
+            );
+            updatedPositions[polygonIndex] = updatedPolygon;
+            return updatedPositions;
+          });
+          if (moveAlongY) dragStartRef.current.lat = currentLatLng.lat;
+          if (moveAlongX) dragStartRef.current.lng = currentLatLng.lng;
+        }
+
+        // Обработка вращения
+        if (
+          rotatingRef.current &&
+          rotateCenterRef.current &&
+          e.touches.length === 2
+        ) {
+          e.preventDefault();
+          const touch2 = e.touches[1]; // используем второй палец
+          const containerPoint = map.mouseEventToContainerPoint({
+            clientX: touch2.clientX,
+            clientY: touch2.clientY,
+          });
+          const currentLatLng = map.containerPointToLatLng(containerPoint);
+          const center = rotateCenterRef.current;
+
+          // Вычисляем угол от центра до точки второго касания
+          const prevAngle = Math.atan2(
+            rotateStartRef.current.lat - center.lat,
+            rotateStartRef.current.lng - center.lng,
+          );
+          const newAngle = Math.atan2(
+            currentLatLng.lat - center.lat,
+            currentLatLng.lng - center.lng,
+          );
+          const angleDelta = newAngle - prevAngle;
+          const polygonIndex =
+            activePolygon > 0 ? activePolygon - 1 : activePolygon;
+
+          setPositions((prevPositions) => {
+            const updatedPositions = [...prevPositions];
+            updatedPositions[polygonIndex] = updatedPositions[polygonIndex].map(
+              (point) => rotatePointFixed(point, center, angleDelta),
+            );
+            return updatedPositions;
+          });
+          // Обновляем стартовую точку для следующего расчёта угла
+          rotateStartRef.current = currentLatLng;
+          console.log('Rotating:', {
+            prevAngle,
+            newAngle,
+            angleDelta,
+          });
+        }
+      };
+
+      const handleTouchEnd = (e) => {
+        if (e.touches.length === 0) {
+          if (draggingRef.current) {
+            draggingRef.current = false;
+            dragStartRef.current = null;
+            map.dragging.enable();
+          }
+          if (rotatingRef.current) {
+            rotatingRef.current = false;
+            rotateStartRef.current = null;
+            rotateCenterRef.current = null;
+            map.touchZoom.enable();
+          }
+        } else if (e.touches.length < 2 && rotatingRef.current) {
+          // Если остается менее двух касаний – завершаем вращение
+          rotatingRef.current = false;
+          map.touchZoom.enable();
+          rotateStartRef.current = null;
+          rotateCenterRef.current = null;
+        }
+      };
+
+      container.addEventListener('touchstart', handleTouchStart, {
+        passive: true,
+      });
+      container.addEventListener('touchmove', handleTouchMove, {
+        passive: false,
+      });
+      container.addEventListener('touchend', handleTouchEnd, {
+        passive: false,
+      });
+      container.addEventListener('touchcancel', handleTouchEnd, {
+        passive: false,
+      });
+
+      return () => {
+        container.removeEventListener('touchstart', handleTouchStart);
+        container.removeEventListener('touchmove', handleTouchMove);
+        container.removeEventListener('touchend', handleTouchEnd);
+        container.removeEventListener('touchcancel', handleTouchEnd);
+      };
+    }, [map, activePolygon, positions, setPositions]);
+
+    return null;
+  };
+
   return (
     <>
       <MapClickHandler />
       <PolygonDragHandler />
+      <MobileTouchHandler />
       {/* Отображаем замкнутый полигон (если он есть) по индексу закрытого полигона */}
       <Polyline
         positions={
@@ -401,3 +610,5 @@ NormalPolygon.propTypes = {
   activePolygon: PropTypes.number,
   positions: PropTypes.array,
 };
+
+export default NormalPolygon;
