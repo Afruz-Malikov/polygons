@@ -152,56 +152,37 @@ export const NormalPolygon = ({
 
         if (isPointInPolygon(e.latlng, polygonPoints)) {
           draggingRef.current = true;
-          dragStartRef.current = { ...e.latlng, axis: null };
+          dragStartRef.current = { ...e.latlng };
           map.dragging.disable();
           console.log('mousedown', draggingRef, dragStartRef);
         }
       },
+
       mousemove(e) {
         if (draggingRef.current && dragStartRef.current) {
           const currentLatLng = e.latlng;
           const deltaLat = currentLatLng.lat - dragStartRef.current.lat;
           const deltaLng = currentLatLng.lng - dragStartRef.current.lng;
-          const threshold = 0.00005;
-
-          if (dragStartRef.current.axis === null) {
-            if (Math.abs(deltaLng) > threshold) {
-              dragStartRef.current.axis = 'x';
-            } else if (Math.abs(deltaLat) > threshold) {
-              dragStartRef.current.axis = 'y';
-            }
-          }
-
-          const moveAlongX = dragStartRef.current.axis === 'x';
-          const moveAlongY = dragStartRef.current.axis === 'y';
 
           const polygonIndexForDragging =
             activePolygon > 0 ? activePolygon - 1 : activePolygon;
-
-          // Коррекция долготы по широте
-          const center = getPolygonCenter(positions[polygonIndexForDragging]);
 
           setPositions((prevPositions) => {
             const updatedPositions = [...prevPositions];
             const updatedPolygon = updatedPositions[
               polygonIndexForDragging
-            ].map((point) => {
-              return {
-                lat: Number(point.lat) + (moveAlongY ? deltaLat : 0),
-                lng:
-                  Number(point.lng) +
-                  (moveAlongX
-                    ? deltaLng * Math.cos((center.lat * Math.PI) / 180)
-                    : 0),
-              };
-            });
+            ].map((point) => ({
+              lat: (Number(point.lat) + deltaLat).toString(),
+              lng: (Number(point.lng) + deltaLng).toString(),
+            }));
 
             updatedPositions[polygonIndexForDragging] = updatedPolygon;
             return updatedPositions;
           });
 
-          if (moveAlongY) dragStartRef.current.lat = currentLatLng.lat;
-          if (moveAlongX) dragStartRef.current.lng = currentLatLng.lng;
+          // Обновляем стартовую точку
+          dragStartRef.current.lat = currentLatLng.lat;
+          dragStartRef.current.lng = currentLatLng.lng;
         }
 
         if (rotatingRef.current && rotateCenterRef.current) {
@@ -231,6 +212,7 @@ export const NormalPolygon = ({
           console.log('mousemove', draggingRef, dragStartRef);
         }
       },
+
       mouseup() {
         if (draggingRef.current) {
           draggingRef.current = false;
@@ -245,6 +227,7 @@ export const NormalPolygon = ({
           console.log('mouseup', draggingRef, dragStartRef);
         }
       },
+
       contextmenu(e) {
         const polygonIndexForRotation =
           activePolygon > 0 ? activePolygon - 1 : activePolygon;
